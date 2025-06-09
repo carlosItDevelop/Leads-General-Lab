@@ -116,6 +116,35 @@ async function createTables() {
             user_id VARCHAR(255)
         )
     `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS task_comments (
+            id SERIAL PRIMARY KEY,
+            task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+            comment TEXT NOT NULL,
+            user_id VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS task_attachments (
+            id SERIAL PRIMARY KEY,
+            task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+            filename VARCHAR(255) NOT NULL,
+            file_url TEXT NOT NULL,
+            file_size INTEGER,
+            mime_type VARCHAR(100),
+            uploaded_by VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await pool.query(`
+        ALTER TABLE tasks 
+        ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0
+    `);
     
     console.log('✅ Tabelas criadas com sucesso');
 }
@@ -539,6 +568,128 @@ const api = {
 
     async deleteNote(id) {
         await pool.query('DELETE FROM notes WHERE id = $1', [id]);
+    },
+
+    // Task Comments
+    async getTaskComments(taskId) {
+        const result = await pool.query(
+            'SELECT * FROM task_comments WHERE task_id = $1 ORDER BY created_at ASC', 
+            [taskId]
+        );
+        return result.rows;
+    },
+
+    async createTaskComment(commentData) {
+        const { task_id, comment, user_id } = commentData;
+        const result = await pool.query(`
+            INSERT INTO task_comments (task_id, comment, user_id)
+            VALUES ($1, $2, $3)
+            RETURNING *
+        `, [task_id, comment, user_id]);
+        return result.rows[0];
+    },
+
+    // Task Attachments
+    async getTaskAttachments(taskId) {
+        const result = await pool.query(
+            'SELECT * FROM task_attachments WHERE task_id = $1 ORDER BY created_at DESC', 
+            [taskId]
+        );
+        return result.rows;
+    },
+
+    async createTaskAttachment(attachmentData) {
+        const { task_id, filename, file_url, file_size, mime_type, uploaded_by } = attachmentData;
+        const result = await pool.query(`
+            INSERT INTO task_attachments (task_id, filename, file_url, file_size, mime_type, uploaded_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+        `, [task_id, filename, file_url, file_size, mime_type, uploaded_by]);
+        return result.rows[0];
+    },
+
+    async deleteTaskAttachment(id) {
+        await pool.query('DELETE FROM task_attachments WHERE id = $1', [id]);
+    },
+
+    // Task Progress and Ordering
+    async updateTaskProgress(id, progress) {
+        const result = await pool.query(`
+            UPDATE tasks 
+            SET progress = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+            RETURNING *
+        `, [progress, id]);
+        return result.rows[0];
+    },
+
+    async updateTaskOrder(id, sortOrder) {
+        const result = await pool.query(`
+            UPDATE tasks 
+            SET sort_order = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+            RETURNING *
+        `, [sortOrder, id]);
+        return result.rows[0];
+    },
+
+    async deleteTask(id) {
+        // Verificar se a tarefa tem dependências
+        const attachments = await this.getTaskAttachments(id);
+        const comments = await this.getTaskComments(id);
+        
+        if (attachments.length > 0 || comments.length > 0) {
+            throw new Error(`Tarefa possui ${attachments.length} anexo(s) e ${comments.length} comentário(s). Remova-os primeiro.`);
+        }
+        
+        const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING *', [id]);
+        
+        if (result.rows.length === 0) {
+            throw new Error('Tarefa não encontrada');
+        }
+        
+        return result.rows[0];
+    },
+
+    // Advanced Filters for Tasks
+    async getFilteredTasks(filters = {}) {
+        let query = 'SELECT * FROM tasks';
+        const params = [];
+        const conditions = [];
+
+        if (filters.status) {
+            conditions.push(`status = $${params.length + 1}`);
+            params.push(filters.status);
+        }
+
+        if (filters.priority) {
+            conditions.push(`priority = $${params.length + 1}`);
+            params.push(filters.priority);
+        }
+
+        if (filters.assignee) {
+            conditions.push(`assignee = $${params.length + 1}`);
+            params.push(filters.assignee);
+        }
+
+        if (filters.start_date) {
+            conditions.push(`due_date >= $${params.length + 1}`);
+            params.push(filters.start_date);
+        }
+
+        if (filters.end_date) {
+            conditions.push(`due_date <= $${params.length + 1}`);
+            params.push(filters.end_date);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+
+        query += ' ORDER BY sort_order ASC, due_date ASC';
+
+        const result = await pool.query(query, params);
+        return result.rows;
     }
 };
 

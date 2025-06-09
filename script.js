@@ -478,6 +478,10 @@ async function updateLeadStatus(leadId, newStatus) {
 let currentTasksPage = 1;
 const tasksPerPage = 8;
 let currentTaskFilter = 'all';
+let currentTaskSort = 'order';
+let sortDirection = 'asc';
+let advancedFilters = {};
+let currentTaskId = null;
 
 function renderTasksList() {
     const tasksList = document.getElementById('tasksList');
@@ -499,6 +503,41 @@ function renderTasksList() {
         }
     });
 
+    // Apply advanced filters
+    if (Object.keys(advancedFilters).length > 0) {
+        filteredTasks = filteredTasks.filter(task => {
+            if (advancedFilters.startDate && task.due_date < advancedFilters.startDate) return false;
+            if (advancedFilters.endDate && task.due_date > advancedFilters.endDate) return false;
+            if (advancedFilters.assignee && task.assignee !== advancedFilters.assignee) return false;
+            if (advancedFilters.priority && task.priority !== advancedFilters.priority) return false;
+            return true;
+        });
+    }
+
+    // Apply sorting
+    filteredTasks.sort((a, b) => {
+        let valueA = a[currentTaskSort] || '';
+        let valueB = b[currentTaskSort] || '';
+        
+        if (currentTaskSort === 'due_date') {
+            valueA = new Date(a.due_date || a.dueDate);
+            valueB = new Date(b.due_date || b.dueDate);
+        } else if (currentTaskSort === 'priority') {
+            const priorityOrder = { high: 3, medium: 2, low: 1 };
+            valueA = priorityOrder[a.priority] || 0;
+            valueB = priorityOrder[b.priority] || 0;
+        } else if (currentTaskSort === 'progress') {
+            valueA = a.progress || 0;
+            valueB = b.progress || 0;
+        }
+
+        if (sortDirection === 'asc') {
+            return valueA > valueB ? 1 : -1;
+        } else {
+            return valueA < valueB ? 1 : -1;
+        }
+    });
+
     // Calculate pagination
     const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
     const startIndex = (currentTasksPage - 1) * tasksPerPage;
@@ -506,20 +545,8 @@ function renderTasksList() {
     const paginatedTasks = filteredTasks.slice(startIndex, endIndex);
 
     tasksList.innerHTML = `
-        <div class="tasks-content">
-            ${paginatedTasks.map(task => `
-                <div class="task-item" data-status="${task.status}">
-                    <input type="checkbox" class="task-checkbox" ${task.status === 'completed' ? 'checked' : ''} 
-                           onchange="toggleTaskStatus(${task.id})">
-                    <div class="task-content">
-                        <div class="task-title" style="cursor: pointer; color: var(--primary-color);" onclick="openTaskDetails(${task.id})">${task.title}</div>
-                        <div class="task-description">${task.description}</div>
-                    </div>
-                    <div class="task-date">
-                        <i class="fas fa-calendar"></i> ${formatDate(task.dueDate || task.due_date)}
-                    </div>
-                </div>
-            `).join('')}
+        <div class="tasks-content" id="sortableTasks">
+            ${paginatedTasks.map(task => renderTaskItem(task)).join('')}
         </div>
         <div class="tasks-pagination">
             <button class="btn btn-sm btn-secondary" ${currentTasksPage === 1 ? 'disabled' : ''} onclick="changeTasksPage(${currentTasksPage - 1})">
@@ -531,6 +558,68 @@ function renderTasksList() {
             </button>
         </div>
     `;
+
+    // Enable drag and drop if sorted by order
+    if (currentTaskSort === 'order') {
+        enableTaskDragAndDrop();
+    }
+}
+
+function renderTaskItem(task) {
+    const dueDate = new Date(task.dueDate || task.due_date);
+    const today = new Date();
+    const isOverdue = task.status === 'pending' && dueDate < today;
+    const progress = task.progress || 0;
+
+    return `
+        <div class="task-item" data-task-id="${task.id}" data-status="${task.status}" draggable="${currentTaskSort === 'order'}">
+            <input type="checkbox" class="task-checkbox" ${task.status === 'completed' ? 'checked' : ''} 
+                   onchange="toggleTaskStatus(${task.id})">
+            <div class="task-content">
+                <div class="task-header">
+                    <div class="task-title" style="cursor: pointer; color: var(--primary-color);" onclick="openTaskDetailsModal(${task.id})">
+                        ${task.title}
+                        <span class="priority-badge ${task.priority}">${getPriorityLabel(task.priority)}</span>
+                    </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="openTaskDetailsModal(${task.id})" title="Ver detalhes">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="task-action-btn" onclick="editTaskInline(${task.id})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="task-action-btn" onclick="deleteTaskWithConfirmation(${task.id})" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="task-description">${task.description || ''}</div>
+                <div class="task-progress">
+                    <div class="task-progress-bar">
+                        <div class="task-progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <span class="task-progress-text">${progress}%</span>
+                </div>
+            </div>
+            <div class="task-meta">
+                <div class="task-date ${isOverdue ? 'overdue' : ''}">
+                    <i class="fas fa-calendar"></i> ${formatDate(task.dueDate || task.due_date)}
+                </div>
+                <div class="task-assignee">
+                    <i class="fas fa-user"></i> ${task.assignee}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getPriorityLabel(priority) {
+    const labels = {
+        high: 'Alta',
+        medium: 'Média',
+        low: 'Baixa'
+    };
+    return labels[priority] || priority;
 }
 
 function openTaskDetails(taskId) {
@@ -2481,6 +2570,15 @@ window.openNewCardModal = openNewCardModal;
 window.submitNewCard = submitNewCard;
 window.openLogDetails = openLogDetails;
 window.changeTasksPage = changeTasksPage;
+window.applyAdvancedFilters = applyAdvancedFilters;
+window.clearAdvancedFilters = clearAdvancedFilters;
+window.sortTasks = sortTasks;
+window.toggleSortDirection = toggleSortDirection;
+window.openTaskDetailsModal = openTaskDetailsModal;
+window.updateTaskProgress = updateTaskProgress;
+window.addTaskComment = addTaskComment;
+window.deleteTaskWithConfirmation = deleteTaskWithConfirmation;
+window.updateProgressDisplay = updateProgressDisplay;
 
 // Lead Notes Management
 async function loadAllLeadNotes() {
@@ -2716,4 +2814,330 @@ function getHistoryIcon(type) {
         calendar: 'calendar-alt'
     };
     return icons[type] || 'info-circle';
+}
+
+// Advanced Task Functions
+function applyAdvancedFilters() {
+    const startDate = document.getElementById('taskStartDate').value;
+    const endDate = document.getElementById('taskEndDate').value;
+    const assignee = document.getElementById('taskAssigneeFilter').value;
+    const priority = document.getElementById('taskPriorityFilter').value;
+
+    advancedFilters = {};
+    if (startDate) advancedFilters.startDate = startDate;
+    if (endDate) advancedFilters.endDate = endDate;
+    if (assignee) advancedFilters.assignee = assignee;
+    if (priority) advancedFilters.priority = priority;
+
+    currentTasksPage = 1;
+    renderTasksList();
+    showNotification('Filtros aplicados com sucesso!', 'success');
+}
+
+function clearAdvancedFilters() {
+    document.getElementById('taskStartDate').value = '';
+    document.getElementById('taskEndDate').value = '';
+    document.getElementById('taskAssigneeFilter').value = '';
+    document.getElementById('taskPriorityFilter').value = '';
+    
+    advancedFilters = {};
+    currentTasksPage = 1;
+    renderTasksList();
+    showNotification('Filtros removidos!', 'info');
+}
+
+function sortTasks() {
+    const sortSelect = document.getElementById('taskSortBy');
+    currentTaskSort = sortSelect.value;
+    renderTasksList();
+}
+
+function toggleSortDirection() {
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    const sortIcon = document.getElementById('sortIcon');
+    sortIcon.className = sortDirection === 'asc' ? 'fas fa-sort-amount-up' : 'fas fa-sort-amount-down';
+    renderTasksList();
+}
+
+function enableTaskDragAndDrop() {
+    const tasksContainer = document.getElementById('sortableTasks');
+    if (!tasksContainer) return;
+
+    let draggedElement = null;
+
+    tasksContainer.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('task-item')) {
+            draggedElement = e.target;
+            e.target.classList.add('dragging');
+        }
+    });
+
+    tasksContainer.addEventListener('dragend', (e) => {
+        if (e.target.classList.contains('task-item')) {
+            e.target.classList.remove('dragging');
+            draggedElement = null;
+        }
+    });
+
+    tasksContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(tasksContainer, e.clientY);
+        if (draggedElement) {
+            if (afterElement == null) {
+                tasksContainer.appendChild(draggedElement);
+            } else {
+                tasksContainer.insertBefore(draggedElement, afterElement);
+            }
+        }
+    });
+
+    tasksContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (draggedElement) {
+            updateTaskOrder();
+        }
+    });
+}
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+async function updateTaskOrder() {
+    const tasksContainer = document.getElementById('sortableTasks');
+    const taskItems = tasksContainer.querySelectorAll('.task-item');
+    
+    const updates = [];
+    taskItems.forEach((item, index) => {
+        const taskId = item.dataset.taskId;
+        updates.push(updateTaskOrderAPI(taskId, index));
+    });
+
+    try {
+        await Promise.all(updates);
+        showNotification('Ordem das tarefas atualizada!', 'success');
+    } catch (error) {
+        console.error('Erro ao atualizar ordem:', error);
+        showNotification('Erro ao atualizar ordem das tarefas', 'error');
+    }
+}
+
+async function updateTaskOrderAPI(taskId, sortOrder) {
+    return fetchFromAPI(`/tasks/${taskId}/order`, {
+        method: 'PUT',
+        body: JSON.stringify({ sortOrder })
+    });
+}
+
+async function openTaskDetailsModal(taskId) {
+    currentTaskId = taskId;
+    const task = tasks.find(t => t.id === taskId);
+    
+    if (!task) {
+        showNotification('Tarefa não encontrada', 'error');
+        return;
+    }
+
+    // Set task details
+    document.getElementById('taskDetailsTitle').textContent = task.title;
+    document.getElementById('taskProgressSlider').value = task.progress || 0;
+    document.getElementById('taskProgressText').textContent = `${task.progress || 0}%`;
+    document.getElementById('taskProgressBar').style.width = `${task.progress || 0}%`;
+
+    // Load comments and attachments
+    await loadTaskComments(taskId);
+    await loadTaskAttachments(taskId);
+
+    document.getElementById('taskDetailsModal').style.display = 'block';
+}
+
+async function loadTaskComments(taskId) {
+    try {
+        const comments = await fetchFromAPI(`/tasks/${taskId}/comments`);
+        const commentsList = document.getElementById('taskCommentsList');
+        
+        commentsList.innerHTML = comments.map(comment => `
+            <div class="comment-item">
+                <div class="comment-header">
+                    <span class="comment-author">${comment.user_id}</span>
+                    <span class="comment-date">${formatDateTime(comment.created_at)}</span>
+                </div>
+                <div class="comment-text">${comment.comment}</div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Erro ao carregar comentários:', error);
+    }
+}
+
+async function loadTaskAttachments(taskId) {
+    try {
+        const attachments = await fetchFromAPI(`/tasks/${taskId}/attachments`);
+        const attachmentsList = document.getElementById('taskAttachmentsList');
+        
+        attachmentsList.innerHTML = attachments.map(attachment => `
+            <div class="attachment-item">
+                <div class="attachment-info">
+                    <i class="fas fa-file attachment-icon"></i>
+                    <span class="attachment-name">${attachment.filename}</span>
+                    <span class="attachment-size">(${formatFileSize(attachment.file_size)})</span>
+                </div>
+                <div class="attachment-actions">
+                    <button class="btn-icon" onclick="downloadAttachment('${attachment.file_url}')" title="Download">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn-icon" onclick="deleteAttachment(${attachment.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Erro ao carregar anexos:', error);
+    }
+}
+
+async function updateTaskProgress(progress) {
+    if (!currentTaskId) return;
+
+    document.getElementById('taskProgressText').textContent = `${progress}%`;
+    document.getElementById('taskProgressBar').style.width = `${progress}%`;
+
+    try {
+        await fetchFromAPI(`/tasks/${currentTaskId}/progress`, {
+            method: 'PUT',
+            body: JSON.stringify({ progress: parseInt(progress) })
+        });
+
+        // Update local tasks array
+        const task = tasks.find(t => t.id === currentTaskId);
+        if (task) {
+            task.progress = parseInt(progress);
+        }
+
+        renderTasksList();
+        showNotification('Progresso atualizado!', 'success');
+    } catch (error) {
+        console.error('Erro ao atualizar progresso:', error);
+        showNotification('Erro ao atualizar progresso', 'error');
+    }
+}
+
+async function addTaskComment() {
+    const commentText = document.getElementById('newComment').value.trim();
+    
+    if (!commentText || !currentTaskId) {
+        showNotification('Digite um comentário', 'warning');
+        return;
+    }
+
+    try {
+        await fetchFromAPI(`/tasks/${currentTaskId}/comments`, {
+            method: 'POST',
+            body: JSON.stringify({
+                comment: commentText,
+                user_id: 'Usuário Atual'
+            })
+        });
+
+        document.getElementById('newComment').value = '';
+        await loadTaskComments(currentTaskId);
+        showNotification('Comentário adicionado!', 'success');
+    } catch (error) {
+        console.error('Erro ao adicionar comentário:', error);
+        showNotification('Erro ao adicionar comentário', 'error');
+    }
+}
+
+async function deleteTaskWithConfirmation(taskId = null) {
+    const targetTaskId = taskId || currentTaskId;
+    const task = tasks.find(t => t.id === targetTaskId);
+    
+    if (!task) {
+        showNotification('Tarefa não encontrada', 'error');
+        return;
+    }
+
+    try {
+        await fetchFromAPI(`/tasks/${targetTaskId}`, {
+            method: 'DELETE'
+        });
+
+        // Remove from local array
+        tasks = tasks.filter(t => t.id !== targetTaskId);
+        
+        if (taskId) {
+            // Called from task list
+            renderTasksList();
+        } else {
+            // Called from modal
+            closeModal('taskDetailsModal');
+            renderTasksList();
+        }
+        
+        showNotification('Tarefa excluída com sucesso!', 'success');
+    } catch (error) {
+        console.error('Erro ao excluir tarefa:', error);
+        if (error.message && error.message.includes('possui')) {
+            showNotification(error.message, 'warning');
+        } else {
+            showNotification('Erro ao excluir tarefa', 'error');
+        }
+    }
+}
+
+function updateProgressDisplay(value) {
+    const display = document.getElementById('progressDisplay');
+    if (display) {
+        display.textContent = `${value}%`;
+    }
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function downloadAttachment(url) {
+    window.open(url, '_blank');
+}
+
+async function deleteAttachment(attachmentId) {
+    const result = await Swal.fire({
+        title: 'Confirmar Exclusão',
+        text: 'Tem certeza que deseja excluir este anexo?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sim, excluir!',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await fetchFromAPI(`/tasks/${currentTaskId}/attachments/${attachmentId}`, {
+                method: 'DELETE'
+            });
+            await loadTaskAttachments(currentTaskId);
+            showNotification('Anexo excluído!', 'success');
+        } catch (error) {
+            console.error('Erro ao excluir anexo:', error);
+            showNotification('Erro ao excluir anexo', 'error');
+        }
+    }
 }

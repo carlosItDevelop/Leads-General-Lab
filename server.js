@@ -86,6 +86,115 @@ app.put('/api/tasks/:id/status', async (req, res) => {
     }
 });
 
+app.put('/api/tasks/:id/progress', async (req, res) => {
+    try {
+        const updatedTask = await api.updateTaskProgress(req.params.id, req.body.progress);
+        res.json(updatedTask);
+    } catch (error) {
+        console.error('Erro ao atualizar progresso da tarefa:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.put('/api/tasks/:id/order', async (req, res) => {
+    try {
+        const updatedTask = await api.updateTaskOrder(req.params.id, req.body.sortOrder);
+        res.json(updatedTask);
+    } catch (error) {
+        console.error('Erro ao atualizar ordem da tarefa:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.delete('/api/tasks/:id', async (req, res) => {
+    try {
+        await api.deleteTask(req.params.id);
+        res.status(204).send();
+    } catch (error) {
+        console.error('Erro ao deletar tarefa:', error);
+        if (error.message.includes('possui')) {
+            res.status(400).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: 'Erro interno do servidor' });
+        }
+    }
+});
+
+app.get('/api/tasks/filtered', async (req, res) => {
+    try {
+        const tasks = await api.getFilteredTasks(req.query);
+        res.json(tasks);
+    } catch (error) {
+        console.error('Erro ao buscar tarefas filtradas:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Task Comments
+app.get('/api/tasks/:id/comments', async (req, res) => {
+    try {
+        const comments = await api.getTaskComments(req.params.id);
+        res.json(comments);
+    } catch (error) {
+        console.error('Erro ao buscar comentários:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.post('/api/tasks/:id/comments', async (req, res) => {
+    try {
+        const commentData = {
+            task_id: req.params.id,
+            comment: req.body.comment,
+            user_id: req.body.user_id
+        };
+        const newComment = await api.createTaskComment(commentData);
+        res.status(201).json(newComment);
+    } catch (error) {
+        console.error('Erro ao criar comentário:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Task Attachments
+app.get('/api/tasks/:id/attachments', async (req, res) => {
+    try {
+        const attachments = await api.getTaskAttachments(req.params.id);
+        res.json(attachments);
+    } catch (error) {
+        console.error('Erro ao buscar anexos:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.post('/api/tasks/:id/attachments', async (req, res) => {
+    try {
+        const attachmentData = {
+            task_id: req.params.id,
+            filename: req.body.filename,
+            file_url: req.body.file_url,
+            file_size: req.body.file_size,
+            mime_type: req.body.mime_type,
+            uploaded_by: req.body.uploaded_by
+        };
+        const newAttachment = await api.createTaskAttachment(attachmentData);
+        res.status(201).json(newAttachment);
+    } catch (error) {
+        console.error('Erro ao criar anexo:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.delete('/api/tasks/:taskId/attachments/:id', async (req, res) => {
+    try {
+        await api.deleteTaskAttachment(req.params.id);
+        res.status(204).send();
+    } catch (error) {
+        console.error('Erro ao deletar anexo:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
 app.get('/api/logs', async (req, res) => {
     try {
         const logs = await api.getLogs(req.query);
