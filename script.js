@@ -870,11 +870,47 @@ async function initializeCalendar() {
             });
         },
         dateClick: function(info) {
+            // Resetar completamente o modal para novo evento
+            const form = document.getElementById('activityForm');
+            form.reset();
+            
+            // Remover qualquer input hidden de edição que possa existir
+            const eventIdInput = document.getElementById('activityEventId');
+            if (eventIdInput) {
+                eventIdInput.remove();
+            }
+            
             // Set default date/time for new event
             const clickedDate = new Date(info.date);
             clickedDate.setHours(9, 0, 0, 0);
 
             document.getElementById('activityDateTime').value = clickedDate.toISOString().slice(0, 16);
+            
+            // Recarregar dropdown de leads
+            const leadSelect = document.getElementById('activityLeadId');
+            leadSelect.innerHTML = '<option value="">Selecione um lead (opcional)</option>';
+            
+            if (leads && leads.length > 0) {
+                leads.forEach(lead => {
+                    const option = document.createElement('option');
+                    option.value = lead.id;
+                    option.textContent = `${lead.name} - ${lead.company}`;
+                    leadSelect.appendChild(option);
+                });
+            }
+
+            // ✨ GARANTIR que o modal esteja no modo CRIAÇÃO
+            const modalTitle = document.querySelector('#activityModal .modal-header h2');
+            const submitButton = document.querySelector('#activityModal .modal-footer .btn-primary');
+            
+            if (modalTitle) {
+                modalTitle.textContent = 'Agendar Atividade';
+            }
+            
+            if (submitButton) {
+                submitButton.innerHTML = '<i class="fas fa-plus"></i> Agendar';
+            }
+            
             document.getElementById('activityModal').style.display = 'block';
         },
         eventDidMount: function(info) {
