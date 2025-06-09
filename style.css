@@ -1038,10 +1038,21 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  margin: 0 -12px;
+  padding: 16px 12px;
+  position: relative;
 }
 
 .task-item:last-child {
   border-bottom: none;
+}
+
+.task-item:hover {
+  background-color: var(--bg-secondary);
+  transform: translateX(4px);
+  box-shadow: var(--shadow);
 }
 
 .task-checkbox {
@@ -1059,6 +1070,11 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 4px;
+  transition: color 0.2s ease;
+}
+
+.task-item:hover .task-title {
+  color: var(--primary-color);
 }
 
 .task-description {
@@ -1069,6 +1085,34 @@ body {
 .task-date {
   font-size: 12px;
   color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.task-item:hover .task-date {
+  opacity: 1;
+}
+
+.task-item::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid var(--text-muted);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.task-item:hover::after {
+  opacity: 0.6;
 }
 
 /* Reports */
