@@ -338,6 +338,11 @@ const api = {
     },
 
     // Activities
+    async getActivities() {
+        const result = await pool.query('SELECT * FROM activities ORDER BY scheduled_date ASC');
+        return result.rows;
+    },
+
     async createActivity(activityData) {
         const { lead_id, type, title, description, scheduled_date } = activityData;
 

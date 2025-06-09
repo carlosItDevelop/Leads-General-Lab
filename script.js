@@ -692,12 +692,35 @@ async function toggleTaskStatus(taskId) {
 }
 
 // Calendar Management
-function initializeCalendar() {
+async function initializeCalendar() {
     const calendarEl = document.getElementById('calendar-widget');
     if (!calendarEl) return;
 
     // Configurar drag and drop para eventos pré-definidos
     setupCalendarDragDrop();
+
+    // Carregar atividades do banco
+    let activities = [];
+    try {
+        activities = await fetchFromAPI('/activities');
+    } catch (error) {
+        console.error('Erro ao carregar atividades:', error);
+        activities = [];
+    }
+
+    // Converter atividades para eventos do calendário
+    const calendarEvents = activities.map(activity => ({
+        id: activity.id.toString(),
+        title: activity.title,
+        start: activity.scheduled_date,
+        backgroundColor: getEventColor(activity.type),
+        borderColor: getEventColor(activity.type),
+        extendedProps: {
+            leadId: activity.lead_id,
+            type: activity.type,
+            description: activity.description
+        }
+    }));
 
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
@@ -725,47 +748,7 @@ function initializeCalendar() {
         eventColor: '#3b82f6',
         eventBorderColor: '#3b82f6',
         eventTextColor: '#ffffff',
-        events: [
-            {
-                id: '1',
-                title: 'Reunião com João Silva',
-                start: '2024-01-20T14:00:00',
-                end: '2024-01-20T15:00:00',
-                backgroundColor: '#3b82f6',
-                borderColor: '#2563eb',
-                extendedProps: {
-                    leadId: 1,
-                    type: 'meeting',
-                    description: 'Apresentação de proposta comercial'
-                }
-            },
-            {
-                id: '2',
-                title: 'Follow-up Ana Costa',
-                start: '2024-01-22T10:00:00',
-                end: '2024-01-22T10:30:00',
-                backgroundColor: '#10b981',
-                borderColor: '#059669',
-                extendedProps: {
-                    leadId: 2,
-                    type: 'call',
-                    description: 'Verificar status da proposta'
-                }
-            },
-            {
-                id: '3',
-                title: 'Demonstração Tech Corp',
-                start: '2024-01-25T16:00:00',
-                end: '2024-01-25T17:30:00',
-                backgroundColor: '#f59e0b',
-                borderColor: '#d97706',
-                extendedProps: {
-                    leadId: 1,
-                    type: 'demo',
-                    description: 'Demonstração da plataforma'
-                }
-            }
-        ],
+        events: calendarEvents,
         eventClick: function(info) {
             const event = info.event;
             const props = event.extendedProps;
@@ -863,7 +846,7 @@ function setupCalendarDragDrop() {
     }
 }
 
-function createEventFromTemplate(eventType, date) {
+async function createEventFromTemplate(eventType, date) {
     const eventTemplates = {
         'novo': {
             title: 'Novo Lead - Contato Inicial',
@@ -900,37 +883,53 @@ function createEventFromTemplate(eventType, date) {
     const template = eventTemplates[eventType];
     if (!template || !calendar) return;
 
-    // Criar o evento no calendário
     const startDate = new Date(date);
-    const endDate = new Date(date);
-    endDate.setHours(startDate.getHours() + 1); // 1 hora de duração
-
-    const newEvent = {
-        id: Date.now().toString(),
+    
+    const activityData = {
+        lead_id: null,
+        type: template.type,
         title: template.title,
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
-        backgroundColor: template.color,
-        borderColor: template.color,
-        extendedProps: {
-            type: template.type,
-            description: template.description,
-            createdFrom: 'template'
-        }
+        description: template.description,
+        scheduled_date: startDate.toISOString()
     };
 
-    calendar.addEvent(newEvent);
+    try {
+        // Salvar no banco
+        const newActivity = await fetchFromAPI('/activities', {
+            method: 'POST',
+            body: JSON.stringify(activityData)
+        });
 
-    // Log da atividade
-    addLog({
-        type: 'meeting',
-        title: 'Atividade agendada via template',
-        description: `${template.title} agendada para ${formatDateTime(startDate)}`,
-        user_id: 'Usuário Atual',
-        lead_id: null
-    });
+        // Adicionar ao calendário
+        calendar.addEvent({
+            id: newActivity.id.toString(),
+            title: newActivity.title,
+            start: newActivity.scheduled_date,
+            backgroundColor: template.color,
+            borderColor: template.color,
+            extendedProps: {
+                leadId: newActivity.lead_id,
+                type: newActivity.type,
+                description: newActivity.description,
+                createdFrom: 'template'
+            }
+        });
 
-    showNotification(`${template.title} agendada com sucesso!`, 'success');
+        // Log da atividade
+        await addLog({
+            type: 'meeting',
+            title: 'Atividade agendada via template',
+            description: `${template.title} agendada para ${formatDateTime(startDate)}`,
+            user_id: 'Usuário Atual',
+            lead_id: null
+        });
+
+        showNotification(`${template.title} agendada com sucesso!`, 'success');
+
+    } catch (error) {
+        console.error('Erro ao salvar atividade via template:', error);
+        showNotification('Erro ao salvar atividade', 'error');
+    }
 }
 
 // Charts Management
@@ -1477,23 +1476,18 @@ function openLeadDetails(leadId) {
 }
 
 function openEventModal() {
-    // Reset form for new event
-    const form = document.getElementById('eventForm');
+    // Reset form for new activity
+    const form = document.getElementById('activityForm');
     form.reset();
-    document.getElementById('eventId').value = '';
-    document.getElementById('eventModalTitle').textContent = 'Nova Atividade';
+    document.getElementById('activityLeadId').value = '';
 
-    // Set default start date to current time
+    // Set default date to current time
     const now = new Date();
     now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15); // Round to next 15 minutes
-    document.getElementById('eventStartDate').value = now.toISOString().slice(0, 16);
-
-    // Set default end date to 1 hour later
-    const endTime = new Date(now.getTime() + 60 * 60 * 1000); // Add 1 hour
-    document.getElementById('eventEndDate').value = endTime.toISOString().slice(0, 16);
+    document.getElementById('activityDateTime').value = now.toISOString().slice(0, 16);
 
     // Populate leads dropdown
-    const leadSelect = document.getElementById('eventLeadId');
+    const leadSelect = document.getElementById('activityLeadId');
     leadSelect.innerHTML = '<option value="">Selecione um lead</option>';
     leads.forEach(lead => {
         const option = document.createElement('option');
@@ -1502,7 +1496,7 @@ function openEventModal() {
         leadSelect.appendChild(option);
     });
 
-    document.getElementById('eventModal').style.display = 'block';
+    document.getElementById('activityModal').style.display = 'block';
 }
 
 function openTaskModal() {
@@ -1806,49 +1800,60 @@ setInterval(() => {
     }
 }, 30000); // Check every 30 seconds
 
-function submitActivity() {
+async function submitActivity() {
     const form = document.getElementById('activityForm');
     const formData = new FormData(form);
     const leadId = parseInt(formData.get('leadId'));
-    const lead = leads.find(l => l.id === leadId);
+    const lead = leadId ? leads.find(l => l.id === leadId) : null;
 
-    if (!lead) return;
-
-    const activity = {
-        id: Date.now(),
-        leadId: leadId,
+    const activityData = {
+        lead_id: leadId || null,
         type: formData.get('type'),
         title: formData.get('title'),
         description: formData.get('description'),
-        datetime: formData.get('datetime'),
-        createdAt: new Date().toISOString()
+        scheduled_date: formData.get('datetime')
     };
 
-    // Add to calendar events (in real app, this would be stored)
-    if (calendar) {
-        calendar.addEvent({
-            title: activity.title,
-            start: activity.datetime,
-            backgroundColor: '#3b82f6',
-            extendedProps: {
-                leadId: leadId,
-                leadName: lead.name,
-                type: activity.type
-            }
+    try {
+        // Salvar no banco
+        const newActivity = await fetchFromAPI('/activities', {
+            method: 'POST',
+            body: JSON.stringify(activityData)
         });
+
+        // Adicionar ao calendário
+        if (calendar) {
+            calendar.addEvent({
+                id: newActivity.id.toString(),
+                title: newActivity.title,
+                start: newActivity.scheduled_date,
+                backgroundColor: getEventColor(newActivity.type),
+                borderColor: getEventColor(newActivity.type),
+                extendedProps: {
+                    leadId: newActivity.lead_id,
+                    type: newActivity.type,
+                    description: newActivity.description
+                }
+            });
+        }
+
+        // Log da atividade
+        await addLog({
+            type: 'meeting',
+            title: 'Atividade agendada',
+            description: `${activityData.title}${lead ? ` para ${lead.name}` : ''} agendada`,
+            user_id: 'Usuário Atual',
+            lead_id: leadId
+        });
+
+        closeModal('activityModal');
+        form.reset();
+        showNotification('Atividade agendada com sucesso!', 'success');
+
+    } catch (error) {
+        console.error('Erro ao salvar atividade:', error);
+        showNotification('Erro ao salvar atividade', 'error');
     }
-
-    addLog({
-        type: 'meeting',
-        title: 'Atividade agendada',
-        description: `${activity.title} agendada para ${lead.name}`,
-        user_id: 'Usuário Atual',
-        lead_id: leadId
-    });
-
-    closeModal('activityModal');
-    form.reset();
-    showNotification('Atividade agendada com sucesso!', 'success');
 }
 
 async function submitNote() {
@@ -2018,83 +2023,7 @@ function addNote(leadId) {
     showNotification(`Adicionando nota para ${lead.name}`, 'info');
 }
 
-async function submitEvent() {
-    const form = document.getElementById('eventForm');
-    const formData = new FormData(form);
-    const eventId = formData.get('id');
-    const leadId = parseInt(formData.get('leadId')) || null;
-
-    const eventData = {
-        title: formData.get('title'),
-        type: formData.get('type'),
-        start: formData.get('startDate'),
-        end: formData.get('endDate'),
-        description: formData.get('description'),
-        location: formData.get('location'),
-        participants: formData.get('participants'),
-        reminder: parseInt(formData.get('reminder')) || null,
-        leadId: leadId
-    };
-
-    try {
-        // Add event to calendar
-        if (calendar) {
-            const calendarEvent = {
-                id: eventId || Date.now().toString(),
-                title: eventData.title,
-                start: eventData.start,
-                end: eventData.end || eventData.start,
-                backgroundColor: getEventColor(eventData.type),
-                borderColor: getEventColor(eventData.type),
-                extendedProps: {
-                    type: eventData.type,
-                    description: eventData.description,
-                    location: eventData.location,
-                    participants: eventData.participants,
-                    leadId: leadId
-                }
-            };
-
-            if (eventId) {
-                // Update existing event
-                const existingEvent = calendar.getEventById(eventId);
-                if (existingEvent) {
-                    existingEvent.setProp('title', eventData.title);
-                    existingEvent.setStart(eventData.start);
-                    existingEvent.setEnd(eventData.end);
-                    existingEvent.setExtendedProp('type', eventData.type);
-                    existingEvent.setExtendedProp('description', eventData.description);
-                    existingEvent.setExtendedProp('location', eventData.location);
-                    existingEvent.setExtendedProp('participants', eventData.participants);
-                    existingEvent.setExtendedProp('leadId', leadId);
-                }
-            } else {
-                // Add new event
-                calendar.addEvent(calendarEvent);
-            }
-        }
-
-        // Log the event creation/update
-        const lead = leadId ? leads.find(l => l.id === leadId) : null;
-        await addLog({
-            type: 'meeting',
-            title: eventId ? 'Atividade atualizada' : 'Nova atividade agendada',
-            description: `${eventData.title}${lead ? ` para ${lead.name}` : ''} - ${formatDateTime(eventData.start)}`,
-            user_id: 'Usuário Atual',
-            lead_id: leadId
-        });
-
-        showNotification(eventId ? 'Atividade atualizada com sucesso!' : 'Atividade agendada com sucesso!', 'success');
-
-        closeModal('eventModal');
-        form.reset();
-        document.getElementById('eventModalTitle').textContent = 'Nova Atividade';
-
-    } catch (error) {
-        console.error('Erro ao salvar atividade:', error);
-        showNotification('Erro ao salvar atividade', 'error');
-    }
-}
+// Função submitEvent removida - agora tudo usa submitActivity
 
 function getEventColor(type) {
     const colors = {
@@ -2188,7 +2117,6 @@ window.submitLead = submitLead;
 window.submitActivity = submitActivity;
 window.submitNote = submitNote;
 window.submitTask = submitTask;
-window.submitEvent = submitEvent;
 window.openLeadDetails = openLeadDetails;
 window.openEventModal = openEventModal;
 window.openTaskModal = openTaskModal;
