@@ -259,7 +259,28 @@ async function fetchFromAPI(endpoint, options = {}) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('API Error Response:', errorText);
-            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+            
+            // Tentar extrair mensagem de erro limpa
+            let cleanErrorMessage = 'Erro interno do servidor';
+            
+            try {
+                // Se a resposta é JSON, extrair a mensagem do campo 'error'
+                if (errorText.startsWith('{')) {
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.error) {
+                        cleanErrorMessage = errorJson.error;
+                    }
+                }
+            } catch (parseError) {
+                // Se não conseguir fazer parse, usar a mensagem padrão
+                console.error('Erro ao fazer parse da resposta de erro:', parseError);
+            }
+            
+            // Criar um erro customizado apenas com a mensagem limpa
+            const customError = new Error(cleanErrorMessage);
+            customError.status = response.status;
+            customError.originalMessage = errorText;
+            throw customError;
         }
 
         const contentType = response.headers.get('content-type');
@@ -270,7 +291,12 @@ async function fetchFromAPI(endpoint, options = {}) {
         }
     } catch (error) {
         console.error('Erro na API:', error.message || error);
-        showNotification('Erro na comunicação com o servidor', 'error');
+        
+        // Se não for um erro customizado, mostrar notificação genérica
+        if (!error.status) {
+            showNotification('Erro na comunicação com o servidor', 'error');
+        }
+        
         throw error;
     }
 }
@@ -3069,6 +3095,23 @@ async function deleteTaskWithConfirmation(taskId = null) {
         return;
     }
 
+    const result = await Swal.fire({
+        title: 'Confirmar Exclusão',
+        text: `Tem certeza que deseja excluir a tarefa "${task.title}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sim, excluir!',
+        cancelButtonText: 'Cancelar',
+        background: currentTheme === 'dark' ? '#1e293b' : '#ffffff',
+        color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+    });
+
+    if (!result.isConfirmed) {
+        return;
+    }
+
     try {
         await fetchFromAPI(`/tasks/${targetTaskId}`, {
             method: 'DELETE'
@@ -3089,11 +3132,29 @@ async function deleteTaskWithConfirmation(taskId = null) {
         showNotification('Tarefa excluída com sucesso!', 'success');
     } catch (error) {
         console.error('Erro ao excluir tarefa:', error);
-        if (error.message && error.message.includes('possui')) {
-            showNotification(error.message, 'warning');
-        } else {
-            showNotification('Erro ao excluir tarefa', 'error');
+        
+        // Extrair apenas a mensagem limpa do erro do servidor
+        let userMessage = 'Erro ao excluir tarefa';
+        
+        try {
+            // Se a resposta contém JSON com erro
+            if (error.message && error.message.includes('{')) {
+                const errorStart = error.message.indexOf('{');
+                const errorJson = error.message.substring(errorStart);
+                const parsedError = JSON.parse(errorJson);
+                if (parsedError.error) {
+                    userMessage = parsedError.error;
+                }
+            }
+            // Se é uma mensagem direta que contém "possui"
+            else if (error.message && error.message.includes('possui')) {
+                userMessage = error.message;
+            }
+        } catch (parseError) {
+            console.error('Erro ao processar mensagem:', parseError);
         }
+        
+        showNotification(userMessage, 'warning');
     }
 }
 
