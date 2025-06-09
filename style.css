@@ -1217,12 +1217,14 @@ body {
   gap: 16px;
   align-items: end;
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 .filter-actions {
   display: flex;
   gap: 8px;
   align-items: end;
+  margin-left: auto;
 }
 
 .filter-group {
