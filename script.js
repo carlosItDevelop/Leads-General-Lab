@@ -3194,7 +3194,20 @@ function openTaskEditModal(taskId) {
     document.getElementById('taskId').value = task.id;
     document.getElementById('taskTitle').value = task.title;
     document.getElementById('taskDescription').value = task.description || '';
-    document.getElementById('taskDueDate').value = task.due_date || task.dueDate;
+    
+    // Validar e formatar data corretamente
+    const dueDate = task.due_date || task.dueDate;
+    if (dueDate && dueDate !== 'null' && dueDate !== '') {
+        try {
+            const date = new Date(dueDate);
+            if (!isNaN(date.getTime())) {
+                document.getElementById('taskDueDate').value = date.toISOString().split('T')[0];
+            }
+        } catch (error) {
+            console.error('Erro ao processar data:', error);
+        }
+    }
+    
     document.getElementById('taskPriority').value = task.priority;
     document.getElementById('taskAssignee').value = task.assignee;
     document.getElementById('taskProgress').value = task.progress || 0;

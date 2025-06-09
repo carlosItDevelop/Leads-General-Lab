@@ -82,7 +82,15 @@ app.put('/api/tasks/:id', async (req, res) => {
         res.json(updatedTask);
     } catch (error) {
         console.error('Erro ao atualizar tarefa:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        
+        // Verificar se é erro de validação de data
+        if (error.code === '22007') {
+            res.status(400).json({ error: 'Data de vencimento inválida. Por favor, insira uma data válida.' });
+        } else if (error.message.includes('Tarefa não encontrada')) {
+            res.status(404).json({ error: 'Tarefa não encontrada' });
+        } else {
+            res.status(500).json({ error: 'Erro interno do servidor' });
+        }
     }
 });
 

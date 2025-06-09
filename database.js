@@ -435,11 +435,15 @@ const api = {
     async createTask(taskData) {
         const { title, description, due_date, priority, status, lead_id, assignee } = taskData;
 
+        // Validar e limpar dados
+        const cleanDueDate = due_date && due_date.trim() !== '' ? due_date : null;
+        const cleanLeadId = lead_id && lead_id !== '' ? parseInt(lead_id) : null;
+
         const result = await pool.query(`
             INSERT INTO tasks (title, description, due_date, priority, status, lead_id, assignee)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
-        `, [title, description, due_date, priority, status, lead_id, assignee]);
+        `, [title, description || '', cleanDueDate, priority, status, cleanLeadId, assignee]);
 
         return result.rows[0];
     },
@@ -447,13 +451,17 @@ const api = {
     async updateTask(id, taskData) {
         const { title, description, due_date, priority, lead_id, assignee, progress } = taskData;
         
+        // Validar e limpar dados
+        const cleanDueDate = due_date && due_date.trim() !== '' ? due_date : null;
+        const cleanLeadId = lead_id && lead_id !== '' ? parseInt(lead_id) : null;
+        
         const result = await pool.query(`
             UPDATE tasks 
             SET title = $1, description = $2, due_date = $3, priority = $4, 
                 lead_id = $5, assignee = $6, progress = $7, updated_at = CURRENT_TIMESTAMP
             WHERE id = $8
             RETURNING *
-        `, [title, description, due_date, priority, lead_id, assignee, progress || 0, id]);
+        `, [title, description || '', cleanDueDate, priority, cleanLeadId, assignee, progress || 0, id]);
 
         if (result.rows.length === 0) {
             throw new Error('Tarefa não encontrada');
