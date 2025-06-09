@@ -209,7 +209,7 @@ function setupEventListeners() {
 async function loadSampleData() {
     try {
         console.log('Carregando dados do servidor...');
-        
+
         // Carregar dados do banco
         leads = await fetchFromAPI('/leads');
         tasks = await fetchFromAPI('/tasks');
@@ -223,7 +223,7 @@ async function loadSampleData() {
         renderTasksList();
         renderLogsTimeline();
         renderRecentHistory();
-        
+
         return Promise.resolve();
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
@@ -240,7 +240,7 @@ async function loadSampleData() {
         renderTasksList();
         renderLogsTimeline();
         renderRecentHistory();
-        
+
         return Promise.resolve();
     }
 }
@@ -259,10 +259,10 @@ async function fetchFromAPI(endpoint, options = {}) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('API Error Response:', errorText);
-            
+
             // Tentar extrair mensagem de erro limpa
             let cleanErrorMessage = 'Erro interno do servidor';
-            
+
             try {
                 // Se a resposta é JSON, extrair a mensagem do campo 'error'
                 if (errorText.startsWith('{')) {
@@ -275,7 +275,7 @@ async function fetchFromAPI(endpoint, options = {}) {
                 // Se não conseguir fazer parse, usar a mensagem padrão
                 console.error('Erro ao fazer parse da resposta de erro:', parseError);
             }
-            
+
             // Criar um erro customizado apenas com a mensagem limpa
             const customError = new Error(cleanErrorMessage);
             customError.status = response.status;
@@ -291,12 +291,12 @@ async function fetchFromAPI(endpoint, options = {}) {
         }
     } catch (error) {
         console.error('Erro na API:', error.message || error);
-        
+
         // Se não for um erro customizado, mostrar notificação genérica
         if (!error.status) {
             showNotification('Erro na comunicação com o servidor', 'error');
         }
-        
+
         throw error;
     }
 }
@@ -544,7 +544,7 @@ function renderTasksList() {
     filteredTasks.sort((a, b) => {
         let valueA = a[currentTaskSort] || '';
         let valueB = b[currentTaskSort] || '';
-        
+
         if (currentTaskSort === 'due_date') {
             valueA = new Date(a.due_date || a.dueDate);
             valueB = new Date(b.due_date || b.dueDate);
@@ -870,8 +870,7 @@ function getTemplateColor(eventType) {
     return colors[eventType] || '#3b82f6';
 }
 
-async function initializeCalendar() {
-    const calendarEl = document.getElementById('calendar-widget');
+async function initializeCalendar() {    const calendarEl = document.getElementById('calendar-widget');
     if (!calendarEl) return;
 
     // Carregar atividades do banco com retry se necessário
@@ -934,18 +933,18 @@ async function initializeCalendar() {
                 draggedEl: info.draggedEl,
                 eventType: info.draggedEl.getAttribute('data-event-type')
             });
-            
+
             const eventType = info.draggedEl.getAttribute('data-event-type');
-            
+
             if (eventType) {
                 // Usar a data exata onde foi solto
                 const dropDate = new Date(info.date);
-                
+
                 // Se for uma visualização de dia ou semana, manter a hora. Caso contrário, definir uma hora padrão
                 if (calendar.view.type === 'dayGridMonth') {
                     dropDate.setHours(9, 0, 0, 0); // 9:00 AM como padrão para vista mensal
                 }
-                
+
                 console.log('📅 Criando evento na data:', dropDate);
                 createEventFromTemplate(eventType, dropDate);
             }
@@ -988,23 +987,23 @@ async function initializeCalendar() {
             // Resetar completamente o modal para novo evento
             const form = document.getElementById('activityForm');
             form.reset();
-            
+
             // Remover qualquer input hidden de edição que possa existir
             const eventIdInput = document.getElementById('activityEventId');
             if (eventIdInput) {
                 eventIdInput.remove();
             }
-            
+
             // Set default date/time for new event
             const clickedDate = new Date(info.date);
             clickedDate.setHours(9, 0, 0, 0);
 
             document.getElementById('activityDateTime').value = clickedDate.toISOString().slice(0, 16);
-            
+
             // Recarregar dropdown de leads
             const leadSelect = document.getElementById('activityLeadId');
             leadSelect.innerHTML = '<option value="">Selecione um lead (opcional)</option>';
-            
+
             if (leads && leads.length > 0) {
                 leads.forEach(lead => {
                     const option = document.createElement('option');
@@ -1017,15 +1016,15 @@ async function initializeCalendar() {
             // ✨ GARANTIR que o modal esteja no modo CRIAÇÃO
             const modalTitle = document.querySelector('#activityModal .modal-header h2');
             const submitButton = document.querySelector('#activityModal .modal-footer .btn-primary');
-            
+
             if (modalTitle) {
                 modalTitle.textContent = 'Agendar Atividade';
             }
-            
+
             if (submitButton) {
                 submitButton.innerHTML = '<i class="fas fa-plus"></i> Agendar';
             }
-            
+
             document.getElementById('activityModal').style.display = 'block';
         },
         eventDidMount: function(info) {
@@ -1036,7 +1035,7 @@ async function initializeCalendar() {
 
     // Renderizar o calendário primeiro
     calendar.render();
-    
+
     // Configurar drag and drop externo
     setupCalendarDragDrop();
 }
@@ -1051,7 +1050,7 @@ function setupCalendarDragDrop() {
 
     // Importar Draggable do FullCalendar
     const { Draggable } = FullCalendar;
-    
+
     const containerEl = document.querySelector('.predefined-events');
     if (!containerEl) {
         console.log('⚠️ Container de eventos não encontrado');
@@ -1064,9 +1063,9 @@ function setupCalendarDragDrop() {
         eventData: function(eventEl) {
             const eventType = eventEl.getAttribute('data-event-type');
             const title = eventEl.querySelector('.event-title').textContent;
-            
+
             console.log('🎯 Configurando dados do evento:', { eventType, title });
-            
+
             return {
                 title: title,
                 backgroundColor: getTemplateColor(eventType),
@@ -1084,7 +1083,7 @@ function setupCalendarDragDrop() {
 
 async function createEventFromTemplate(eventType, date) {
     console.log('Criando evento do template:', { eventType, date: date.toISOString() });
-    
+
     const eventTemplates = {
         'novo': {
             title: 'Novo Lead - Contato Inicial',
@@ -1126,7 +1125,7 @@ async function createEventFromTemplate(eventType, date) {
 
     const startDate = new Date(date);
     console.log('Data final do evento:', startDate.toISOString());
-    
+
     const activityData = {
         lead_id: null,
         type: template.type,
@@ -1146,7 +1145,7 @@ async function createEventFromTemplate(eventType, date) {
         // Precisamos apenas atualizar as propriedades do evento existente
         const events = calendar.getEvents();
         const newEvent = events[events.length - 1]; // O último evento criado
-        
+
         if (newEvent && !newEvent.id) {
             // Atualizar o evento temporário com os dados reais do banco
             newEvent.setProp('id', newActivity.id.toString());
@@ -1729,7 +1728,7 @@ function openEventModal() {
     // Populate leads dropdown - sempre recarregar para ter dados atualizados
     const leadSelect = document.getElementById('activityLeadId');
     leadSelect.innerHTML = '<option value="">Selecione um lead (opcional)</option>';
-    
+
     // Verificar se existem leads carregados
     if (leads && leads.length > 0) {
         leads.forEach(lead => {
@@ -1758,11 +1757,11 @@ function openEventModal() {
     // ✨ RESETAR TEXTOS DO MODAL PARA MODO CRIAÇÃO
     const modalTitle = document.querySelector('#activityModal .modal-header h2');
     const submitButton = document.querySelector('#activityModal .modal-footer .btn-primary');
-    
+
     if (modalTitle) {
         modalTitle.textContent = 'Agendar Atividade';
     }
-    
+
     if (submitButton) {
         submitButton.innerHTML = '<i class="fas fa-plus"></i> Agendar';
     }
@@ -1825,9 +1824,7 @@ async function submitLead() {
             const updatedLead = await fetchFromAPI(`/leads/${leadId}`, {
                 method: 'PUT',
                 body: JSON.stringify({...leadData, id: parseInt(leadId)})
-            });
-
-            // Update local array
+            });        // Update local array
             const leadIndex = leads.findIndex(l => l.id === parseInt(leadId));
             if (leadIndex !== -1) {
                 leads[leadIndex] = {...leads[leadIndex], ...leadData, id: parseInt(leadId)};
@@ -2155,7 +2152,7 @@ async function submitActivity() {
         // Limpar e fechar modal
         closeModal('activityModal');
         form.reset();
-        
+
         // Remover input hidden do eventId se existir
         const eventIdInput = document.getElementById('activityEventId');
         if (eventIdInput) {
@@ -2165,11 +2162,11 @@ async function submitActivity() {
         // ✨ RESETAR TEXTOS DO MODAL APÓS SALVAR
         const modalTitle = document.querySelector('#activityModal .modal-header h2');
         const submitButton = document.querySelector('#activityModal .modal-footer .btn-primary');
-        
+
         if (modalTitle) {
             modalTitle.textContent = 'Agendar Atividade';
         }
-        
+
         if (submitButton) {
             submitButton.innerHTML = '<i class="fas fa-plus"></i> Agendar';
         }
@@ -2331,7 +2328,7 @@ function scheduleActivity(leadId) {
     // Reset form and set lead ID
     const form = document.getElementById('activityForm');
     form.reset();
-    
+
     // Set default date to current time
     const now = new Date();
     now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15);
@@ -2461,17 +2458,17 @@ async function submitTask() {
 // Função para abrir modal de edição de evento
 function openEditEventModal(event) {
     const props = event.extendedProps;
-    
+
     // Reset form
     const form = document.getElementById('activityForm');
     form.reset();
-    
+
     // Preencher dados do evento
     document.getElementById('activityLeadId').value = props.leadId || '';
     document.getElementById('activityType').value = props.type || 'meeting';
     document.getElementById('activityTitle').value = event.title;
     document.getElementById('activityDescription').value = props.description || '';
-    
+
     // Converter data para formato datetime-local (corrigir timezone)
     const startDate = new Date(event.start);
     // Usar formato ISO sem conversão de timezone que estava causando problemas
@@ -2481,9 +2478,9 @@ function openEditEventModal(event) {
     const hours = String(startDate.getHours()).padStart(2, '0');
     const minutes = String(startDate.getMinutes()).padStart(2, '0');
     const dateTimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
-    
+
     document.getElementById('activityDateTime').value = dateTimeValue;
-    
+
     // Adicionar ID do evento como atributo hidden
     const eventIdInput = document.createElement('input');
     eventIdInput.type = 'hidden';
@@ -2491,7 +2488,7 @@ function openEditEventModal(event) {
     eventIdInput.value = event.id;
     eventIdInput.id = 'activityEventId';
     form.appendChild(eventIdInput);
-    
+
     // Carregar leads se necessário
     const leadSelect = document.getElementById('activityLeadId');
     if (leadSelect.children.length <= 1) {
@@ -2509,19 +2506,19 @@ function openEditEventModal(event) {
         // Apenas selecionar o lead correto
         leadSelect.value = props.leadId || '';
     }
-    
+
     // ✨ MUDAR TEXTOS DO MODAL PARA MODO EDIÇÃO
     const modalTitle = document.querySelector('#activityModal .modal-header h2');
     const submitButton = document.querySelector('#activityModal .modal-footer .btn-primary');
-    
+
     if (modalTitle) {
         modalTitle.textContent = 'Editar Atividade';
     }
-    
+
     if (submitButton) {
         submitButton.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
     }
-    
+
     // Abrir modal
     document.getElementById('activityModal').style.display = 'block';
 }
@@ -2695,7 +2692,7 @@ function renderRecentHistory() {
 
     // Combine logs and calendar events (if calendar exists), sort by timestamp
     let combinedHistory = [...logs];
-    
+
     if (calendar && calendar.getEvents) {
         const calendarEvents = calendar.getEvents().map(event => ({
             type: 'calendar',
@@ -2853,27 +2850,59 @@ function applyAdvancedFilters() {
     const assignee = document.getElementById('taskAssigneeFilter').value;
     const priority = document.getElementById('taskPriorityFilter').value;
 
-    advancedFilters = {};
-    if (startDate) advancedFilters.startDate = startDate;
-    if (endDate) advancedFilters.endDate = endDate;
-    if (assignee) advancedFilters.assignee = assignee;
-    if (priority) advancedFilters.priority = priority;
+    console.log('Aplicando filtros avançados:', { startDate, endDate, assignee, priority });
 
+    // Salvar filtros ativos globalmente
+    window.activeAdvancedFilters = {
+        startDate,
+        endDate,
+        assignee,
+        priority
+    };
+
+    // Reset para primeira página e renderizar
     currentTasksPage = 1;
     renderTasksList();
+
     showNotification('Filtros aplicados com sucesso!', 'success');
 }
 
 function clearAdvancedFilters() {
+    // Limpar campos do formulário
     document.getElementById('taskStartDate').value = '';
     document.getElementById('taskEndDate').value = '';
     document.getElementById('taskAssigneeFilter').value = '';
     document.getElementById('taskPriorityFilter').value = '';
-    
-    advancedFilters = {};
+
+    // Limpar filtros ativos globalmente
+    window.activeAdvancedFilters = {
+        startDate: '',
+        endDate: '',
+        assignee: '',
+        priority: ''
+    };
+
+    // Reset de todos os filtros
+    currentTaskFilter = 'all';
+    currentTaskSort = 'order';
+    sortDirection = 'asc';
     currentTasksPage = 1;
+
+    // Atualizar UI dos botões de filtro
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === 'all') {
+            btn.classList.add('active');
+        }
+    });
+
+    // Reset do dropdown de ordenação
+    document.getElementById('taskSortBy').value = 'order';
+    document.getElementById('sortIcon').className = 'fas fa-sort-amount-up';
+
+    // Renderizar tarefas sem filtros
     renderTasksList();
-    showNotification('Filtros removidos!', 'info');
+    showNotification('Todos os filtros foram removidos!', 'info');
 }
 
 function sortTasks() {
@@ -2931,11 +2960,11 @@ function enableTaskDragAndDrop() {
 
 function getDragAfterElement(container, y) {
     const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
-    
+
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
-        
+
         if (offset < 0 && offset > closest.offset) {
             return { offset: offset, element: child };
         } else {
@@ -2947,7 +2976,7 @@ function getDragAfterElement(container, y) {
 async function updateTaskOrder() {
     const tasksContainer = document.getElementById('sortableTasks');
     const taskItems = tasksContainer.querySelectorAll('.task-item');
-    
+
     const updates = [];
     taskItems.forEach((item, index) => {
         const taskId = item.dataset.taskId;
@@ -2973,7 +3002,7 @@ async function updateTaskOrderAPI(taskId, sortOrder) {
 async function openTaskDetailsModal(taskId) {
     currentTaskId = taskId;
     const task = tasks.find(t => t.id === taskId);
-    
+
     if (!task) {
         showNotification('Tarefa não encontrada', 'error');
         return;
@@ -2996,7 +3025,7 @@ async function loadTaskComments(taskId) {
     try {
         const comments = await fetchFromAPI(`/tasks/${taskId}/comments`);
         const commentsList = document.getElementById('taskCommentsList');
-        
+
         commentsList.innerHTML = comments.map(comment => `
             <div class="comment-item">
                 <div class="comment-header">
@@ -3015,7 +3044,7 @@ async function loadTaskAttachments(taskId) {
     try {
         const attachments = await fetchFromAPI(`/tasks/${taskId}/attachments`);
         const attachmentsList = document.getElementById('taskAttachmentsList');
-        
+
         attachmentsList.innerHTML = attachments.map(attachment => `
             <div class="attachment-item">
                 <div class="attachment-info">
@@ -3066,7 +3095,7 @@ async function updateTaskProgress(progress) {
 
 async function addTaskComment() {
     const commentText = document.getElementById('newComment').value.trim();
-    
+
     if (!commentText || !currentTaskId) {
         showNotification('Digite um comentário', 'warning');
         return;
@@ -3093,7 +3122,7 @@ async function addTaskComment() {
 async function deleteTaskWithConfirmation(taskId = null) {
     const targetTaskId = taskId || currentTaskId;
     const task = tasks.find(t => t.id === targetTaskId);
-    
+
     if (!task) {
         showNotification('Tarefa não encontrada', 'error');
         return;
@@ -3123,7 +3152,7 @@ async function deleteTaskWithConfirmation(taskId = null) {
 
         // Remove from local array
         tasks = tasks.filter(t => t.id !== targetTaskId);
-        
+
         if (taskId) {
             // Called from task list
             renderTasksList();
@@ -3132,14 +3161,14 @@ async function deleteTaskWithConfirmation(taskId = null) {
             closeModal('taskDetailsModal');
             renderTasksList();
         }
-        
+
         showNotification('Tarefa excluída com sucesso!', 'success');
     } catch (error) {
         console.error('Erro ao excluir tarefa:', error);
-        
+
         // Extrair apenas a mensagem limpa do erro do servidor
         let userMessage = 'Erro ao excluir tarefa';
-        
+
         try {
             // Se a resposta contém JSON com erro
             if (error.message && error.message.includes('{')) {
@@ -3157,7 +3186,7 @@ async function deleteTaskWithConfirmation(taskId = null) {
         } catch (parseError) {
             console.error('Erro ao processar mensagem:', parseError);
         }
-        
+
         showNotification(userMessage, 'warning');
     }
 }
@@ -3190,11 +3219,11 @@ function openTaskEditModal(taskId) {
     // Reset form e preencher com dados da tarefa
     const form = document.getElementById('taskForm');
     form.reset();
-    
+
     document.getElementById('taskId').value = task.id;
     document.getElementById('taskTitle').value = task.title;
     document.getElementById('taskDescription').value = task.description || '';
-    
+
     // Validar e formatar data corretamente
     const dueDate = task.due_date || task.dueDate;
     if (dueDate && dueDate !== 'null' && dueDate !== '') {
@@ -3207,7 +3236,7 @@ function openTaskEditModal(taskId) {
             console.error('Erro ao processar data:', error);
         }
     }
-    
+
     document.getElementById('taskPriority').value = task.priority;
     document.getElementById('taskAssignee').value = task.assignee;
     document.getElementById('taskProgress').value = task.progress || 0;
@@ -3268,3 +3297,164 @@ async function deleteAttachment(attachmentId) {
         }
     }
 }
+
+// Initialize advanced filters object
+window.activeAdvancedFilters = {
+    startDate: '',
+    endDate: '',
+    assignee: '',
+    priority: ''
+};
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Inicializando General Lab CRM...');
+
+    // Initialize advanced filters object
+    window.activeAdvancedFilters = {
+        startDate: '',
+        endDate: '',
+        assignee: '',
+        priority: ''
+    };
+
+    // Initialize data
+    loadSampleData();
+
+    // Initialize tab navigation
+    //initTabNavigation();
+
+    // Initialize modals
+    //initModals();
+
+    // Initialize charts
+    initializeCharts();
+
+    // Initialize calendar
+    initializeCalendar();
+
+    // Initialize tasks
+    //initTasks();
+
+    // Initialize theme
+    //initTheme();
+
+    // Initialize notifications
+    //initNotifications();
+
+    console.log('✅ CRM inicializado com sucesso!');
+});
+
+function applyAdvancedFilters() {
+    const startDate = document.getElementById('taskStartDate').value;
+    const endDate = document.getElementById('taskEndDate').value;
+    const assignee = document.getElementById('taskAssigneeFilter').value;
+    const priority = document.getElementById('taskPriorityFilter').value;
+
+    console.log('Aplicando filtros avançados:', { startDate, endDate, assignee, priority });
+
+    // Salvar filtros ativos globalmente
+    window.activeAdvancedFilters = {
+        startDate,
+        endDate,
+        assignee,
+        priority
+    };
+
+    // Reset para primeira página e renderizar
+    currentTasksPage = 1;
+    renderTasksList();
+
+    showNotification('Filtros aplicados com sucesso!', 'success');
+}
+
+function clearAdvancedFilters() {
+    // Limpar campos do formulário
+    document.getElementById('taskStartDate').value = '';
+    document.getElementById('taskEndDate').value = '';
+    document.getElementById('taskAssigneeFilter').value = '';
+    document.getElementById('taskPriorityFilter').value = '';
+
+    // Limpar filtros ativos globalmente
+    window.activeAdvancedFilters = {
+        startDate: '',
+        endDate: '',
+        assignee: '',
+        priority: ''
+    };
+
+    // Reset de todos os filtros
+    currentTaskFilter = 'all';
+    currentTaskSort = 'order';
+    sortDirection = 'asc';
+    currentTasksPage = 1;
+
+    // Atualizar UI dos botões de filtro
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === 'all') {
+            btn.classList.add('active');
+        }
+    });
+
+    // Reset do dropdown de ordenação
+    document.getElementById('taskSortBy').value = 'order';
+    document.getElementById('sortIcon').className = 'fas fa-sort-amount-up';
+
+    // Renderizar tarefas sem filtros
+    renderTasksList();
+    showNotification('Todos os filtros foram removidos!', 'info');
+}
+
+function renderTasks() {
+    const tasksList = document.getElementById('tasksList');
+    if (!tasksList) return;
+
+    // Apply basic filter
+    let filteredTasks = tasks.filter(task => {
+        if (currentTaskFilter !== 'all') {
+            if (currentTaskFilter === 'pending') {
+                return task.progress < 100;
+            } else if (currentTaskFilter === 'completed') {
+                return task.progress >= 100;
+            } else if (currentTaskFilter === 'overdue') {
+                const today = new Date();
+                const dueDate = new Date(task.due_date || task.dueDate);
+                return dueDate < today && task.progress < 100;
+            }
+            return true;
+        }
+    });
+
+    // Apply advanced filters if they exist
+    if (window.activeAdvancedFilters) {
+        const filters = window.activeAdvancedFilters;
+
+        filteredTasks = filteredTasks.filter(task => {
+            // Filtro por data de início
+            if (filters.startDate) {
+                const taskDate = new Date(task.due_date || task.dueDate);
+                const startDate = new Date(filters.startDate);
+                if (taskDate < startDate) return false;
+            }
+
+            // Filtro por data de fim
+            if (filters.endDate) {
+                const taskDate = new Date(task.due_date || task.dueDate);
+                const endDate = new Date(filters.endDate);
+                if (taskDate > endDate) return false;
+            }
+
+            // Filtro por responsável
+            if (filters.assignee && task.assignee !== filters.assignee) {
+                return false;
+            }
+
+            // Filtro por prioridade
+            if (filters.priority && task.priority !== filters.priority) {
+                return false;
+            }
+
+            return true;
+        });
+    }
