@@ -15,6 +15,111 @@ const pool = new Pool({
     connectionTimeoutMillis: 2000,
 });
 
+// Função para reset completo do banco de dados
+async function resetDatabase() {
+    try {
+        console.log('🗑️ Resetando banco de dados...');
+        
+        // Drop all tables in correct order (respecting foreign keys)
+        await pool.query(`DROP TABLE IF EXISTS activities CASCADE`);
+        await pool.query(`DROP TABLE IF EXISTS tasks CASCADE`);
+        await pool.query(`DROP TABLE IF EXISTS logs CASCADE`);
+        await pool.query(`DROP TABLE IF EXISTS notes CASCADE`);
+        await pool.query(`DROP TABLE IF EXISTS leads CASCADE`);
+        
+        console.log('✅ Todas as tabelas foram removidas');
+        
+        // Recreate all tables
+        await createTables();
+        
+        // Insert fresh sample data
+        await insertSampleData();
+        
+        console.log('🎉 Banco de dados resetado com sucesso!');
+    } catch (error) {
+        console.error('❌ Erro ao resetar banco de dados:', error);
+        throw error;
+    }
+}
+
+// Função para criar todas as tabelas
+async function createTables() {
+    console.log('📋 Criando tabelas...');
+    
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS leads (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            company VARCHAR(255),
+            email VARCHAR(255) UNIQUE NOT NULL,
+            phone VARCHAR(50),
+            position VARCHAR(255),
+            source VARCHAR(100),
+            status VARCHAR(50) DEFAULT 'novo',
+            responsible VARCHAR(255),
+            score INTEGER DEFAULT 50,
+            temperature VARCHAR(20) DEFAULT 'morno',
+            value DECIMAL(10,2) DEFAULT 0,
+            notes TEXT,
+            last_contact DATE DEFAULT CURRENT_DATE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            due_date DATE,
+            priority VARCHAR(20) DEFAULT 'medium',
+            status VARCHAR(20) DEFAULT 'pending',
+            lead_id INTEGER REFERENCES leads(id),
+            assignee VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS logs (
+            id SERIAL PRIMARY KEY,
+            type VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            user_id VARCHAR(255),
+            lead_id INTEGER REFERENCES leads(id)
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS activities (
+            id SERIAL PRIMARY KEY,
+            lead_id INTEGER REFERENCES leads(id),
+            type VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            scheduled_date TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS notes (
+            id SERIAL PRIMARY KEY,
+            lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+            content TEXT NOT NULL,
+            color VARCHAR(20) DEFAULT 'blue',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            user_id VARCHAR(255)
+        )
+    `);
+    
+    console.log('✅ Tabelas criadas com sucesso');
+}
+
 // Função para inicializar o banco de dados
 async function initializeDatabase() {
     try {
@@ -24,90 +129,23 @@ async function initializeDatabase() {
         await pool.query('SELECT NOW()');
         console.log('Conexão com banco de dados estabelecida com sucesso!');
 
-        // Criar tabelas se não existirem
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS leads (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                company VARCHAR(255),
-                email VARCHAR(255) UNIQUE NOT NULL,
-                phone VARCHAR(50),
-                position VARCHAR(255),
-                source VARCHAR(100),
-                status VARCHAR(50) DEFAULT 'novo',
-                responsible VARCHAR(255),
-                score INTEGER DEFAULT 50,
-                temperature VARCHAR(20) DEFAULT 'morno',
-                value DECIMAL(10,2) DEFAULT 0,
-                notes TEXT,
-                last_contact DATE DEFAULT CURRENT_DATE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS tasks (
-                id SERIAL PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                description TEXT,
-                due_date DATE,
-                priority VARCHAR(20) DEFAULT 'medium',
-                status VARCHAR(20) DEFAULT 'pending',
-                lead_id INTEGER REFERENCES leads(id),
-                assignee VARCHAR(255),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS logs (
-                id SERIAL PRIMARY KEY,
-                type VARCHAR(50) NOT NULL,
-                title VARCHAR(255) NOT NULL,
-                description TEXT,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                user_id VARCHAR(255),
-                lead_id INTEGER REFERENCES leads(id)
-            )
-        `);
-
-        // Drop and recreate activities table to ensure correct structure
-        await pool.query(`DROP TABLE IF EXISTS activities CASCADE`);
+        // Verificar se precisa resetar (força reset para corrigir problemas)
+        const shouldReset = process.env.FORCE_DB_RESET === 'true';
         
-        await pool.query(`
-            CREATE TABLE activities (
-                id SERIAL PRIMARY KEY,
-                lead_id INTEGER REFERENCES leads(id),
-                type VARCHAR(50) NOT NULL,
-                title VARCHAR(255) NOT NULL,
-                description TEXT,
-                scheduled_date TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS notes (
-                id SERIAL PRIMARY KEY,
-                lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-                content TEXT NOT NULL,
-                color VARCHAR(20) DEFAULT 'blue',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                user_id VARCHAR(255)
-            )
-        `);
-
-        // Executar migrações necessárias
-        await runMigrations();
-
-        console.log('Banco de dados inicializado com sucesso!');
-
-        // Inserir dados de exemplo se não existirem
-        await insertSampleData();
+        if (shouldReset) {
+            await resetDatabase();
+        } else {
+            // Criar tabelas se não existirem
+            await createTables();
+            
+            // Executar migrações necessárias
+            await runMigrations();
+            
+            console.log('Banco de dados inicializado com sucesso!');
+            
+            // Inserir dados de exemplo se não existirem
+            await insertSampleData();
+        }
 
     } catch (error) {
         console.error('Erro ao inicializar banco de dados:', error);
@@ -207,6 +245,15 @@ async function insertSampleData() {
                 status: 'pending',
                 lead_id: 1,
                 assignee: 'Carlos Oliveira'
+            },
+            {
+                title: 'Enviar proposta para Ana Costa',
+                description: 'Finalizar proposta comercial personalizada',
+                due_date: '2024-01-22',
+                priority: 'high',
+                status: 'pending',
+                lead_id: 2,
+                assignee: 'Carlos Oliveira'
             }
         ];
 
@@ -215,6 +262,73 @@ async function insertSampleData() {
                 INSERT INTO tasks (title, description, due_date, priority, status, lead_id, assignee)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
             `, [task.title, task.description, task.due_date, task.priority, task.status, task.lead_id, task.assignee]);
+        }
+
+        // Inserir atividades de exemplo para a agenda
+        const sampleActivities = [
+            {
+                lead_id: 1,
+                type: 'call',
+                title: 'Ligação de Follow-up - João Silva',
+                description: 'Verificar andamento da proposta e responder dúvidas',
+                scheduled_date: '2024-06-18T10:00:00'
+            },
+            {
+                lead_id: 1,
+                type: 'meeting',
+                title: 'Reunião de Demonstração - Tech Corp',
+                description: 'Apresentar solução completa para o time de TI',
+                scheduled_date: '2024-06-19T14:30:00'
+            },
+            {
+                lead_id: 2,
+                type: 'email',
+                title: 'Envio de Proposta - Ana Costa',
+                description: 'Enviar proposta comercial personalizada por email',
+                scheduled_date: '2024-06-20T09:00:00'
+            },
+            {
+                lead_id: 2,
+                type: 'call',
+                title: 'Agendamento Reunião - Inovação Ltda',
+                description: 'Ligar para agendar apresentação com diretoria',
+                scheduled_date: '2024-06-21T11:00:00'
+            },
+            {
+                lead_id: 3,
+                type: 'meeting',
+                title: 'Reunião Executiva - Startup XYZ',
+                description: 'Reunião com CEO para fechamento do contrato',
+                scheduled_date: '2024-06-22T16:00:00'
+            },
+            {
+                lead_id: null,
+                type: 'task',
+                title: 'Atualização do CRM',
+                description: 'Revisar e atualizar dados de leads no sistema',
+                scheduled_date: '2024-06-23T08:00:00'
+            },
+            {
+                lead_id: 1,
+                type: 'call',
+                title: 'Check-in Semanal - João Silva',
+                description: 'Ligação de acompanhamento semanal',
+                scheduled_date: '2024-06-24T15:00:00'
+            },
+            {
+                lead_id: null,
+                type: 'meeting',
+                title: 'Reunião de Planejamento',
+                description: 'Planejamento estratégico para próximo trimestre',
+                scheduled_date: '2024-06-25T10:30:00'
+            }
+        ];
+
+        for (const activity of sampleActivities) {
+            await pool.query(`
+                INSERT INTO activities (lead_id, type, title, description, scheduled_date)
+                VALUES ($1, $2, $3, $4, $5)
+            `, [activity.lead_id, activity.type, activity.title, activity.description, activity.scheduled_date]);
         }
 
         console.log('Dados de exemplo inseridos com sucesso!');
@@ -401,4 +515,4 @@ const api = {
     }
 };
 
-module.exports = { initializeDatabase, api, pool };
+module.exports = { initializeDatabase, resetDatabase, api, pool };

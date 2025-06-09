@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { initializeDatabase, api } = require('./database');
+const { initializeDatabase, resetDatabase, api } = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -169,6 +169,17 @@ app.delete('/api/notes/:id', async (req, res) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Reset database endpoint (careful - this deletes all data!)
+app.post('/api/reset-database', async (req, res) => {
+    try {
+        await resetDatabase();
+        res.json({ success: true, message: 'Banco de dados resetado com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao resetar banco:', error);
+        res.status(500).json({ error: 'Erro ao resetar banco de dados' });
+    }
 });
 
 // Serve static files - must be last
