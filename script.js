@@ -1296,16 +1296,25 @@ function initializeSalesChart() {
             background: 'transparent',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         },
-        colors: ['#10b981'],
+        colors: ['#00ff88'],
         stroke: {
             curve: 'smooth',
-            width: 3
+            width: 5
+        },
+        markers: {
+            size: 6,
+            colors: ['#00ff88'],
+            strokeColors: '#ffffff',
+            strokeWidth: 2,
+            hover: {
+                size: 8
+            }
         },
         fill: {
             type: 'gradient',
             gradient: {
                 shadeIntensity: 1,
-                opacityFrom: 0.3,
+                opacityFrom: 0.4,
                 opacityTo: 0.1,
                 stops: [0, 90, 100]
             }
@@ -1418,16 +1427,25 @@ function initializeActivityChart() {
             background: 'transparent',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         },
-        colors: ['#3b82f6', '#10b981', '#f59e0b'],
+        colors: ['#00d4ff', '#00ff88', '#ffaa00'],
         stroke: {
             curve: 'smooth',
-            width: 3
+            width: 5
+        },
+        markers: {
+            size: 6,
+            colors: ['#00d4ff', '#00ff88', '#ffaa00'],
+            strokeColors: '#ffffff',
+            strokeWidth: 2,
+            hover: {
+                size: 8
+            }
         },
         fill: {
             type: 'gradient',
             gradient: {
                 shadeIntensity: 1,
-                opacityFrom: 0.3,
+                opacityFrom: 0.4,
                 opacityTo: 0.1,
                 stops: [0, 90, 100]
             }
