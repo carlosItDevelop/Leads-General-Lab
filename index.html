@@ -398,12 +398,27 @@
             </div>
 
             <div class="tasks-container">
-                <!-- Filtros Básicos -->
-                <div class="task-filters">
-                    <button class="filter-btn active" data-filter="all">Todas</button>
-                    <button class="filter-btn" data-filter="pending">Pendentes</button>
-                    <button class="filter-btn" data-filter="completed">Concluídas</button>
-                    <button class="filter-btn" data-filter="overdue">Atrasadas</button>
+                <!-- Filtros Básicos e Ordenação -->
+                <div class="task-filters-row">
+                    <div class="task-filters">
+                        <button class="filter-btn active" data-filter="all">Todas</button>
+                        <button class="filter-btn" data-filter="pending">Pendentes</button>
+                        <button class="filter-btn" data-filter="completed">Concluídas</button>
+                        <button class="filter-btn" data-filter="overdue">Atrasadas</button>
+                    </div>
+                    <div class="sort-controls">
+                        <label>Ordenar por:</label>
+                        <select class="filter-select" id="taskSortBy" onchange="sortTasks()">
+                            <option value="order">Ordem Personalizada</option>
+                            <option value="due_date">Data de Vencimento</option>
+                            <option value="priority">Prioridade</option>
+                            <option value="progress">Progresso</option>
+                            <option value="created_at">Data de Criação</option>
+                        </select>
+                        <button class="btn btn-sm btn-secondary" onclick="toggleSortDirection()">
+                            <i class="fas fa-sort-amount-up" id="sortIcon"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Filtros Avançados -->
@@ -435,30 +450,13 @@
                                 <option value="low">Baixa</option>
                             </select>
                         </div>
-                        <div class="filter-group">
-                            <button class="btn btn-secondary" onclick="applyAdvancedFilters()">
-                                <i class="fas fa-filter"></i> Aplicar Filtros
-                            </button>
-                            <button class="btn btn-secondary" onclick="clearAdvancedFilters()">
-                                <i class="fas fa-times"></i> Limpar
-                            </button>
-                        </div>
                     </div>
-                </div>
-
-                <!-- Controles de Ordenação -->
-                <div class="task-controls">
-                    <div class="sort-controls">
-                        <label>Ordenar por:</label>
-                        <select class="filter-select" id="taskSortBy" onchange="sortTasks()">
-                            <option value="order">Ordem Personalizada</option>
-                            <option value="due_date">Data de Vencimento</option>
-                            <option value="priority">Prioridade</option>
-                            <option value="progress">Progresso</option>
-                            <option value="created_at">Data de Criação</option>
-                        </select>
-                        <button class="btn btn-sm btn-secondary" onclick="toggleSortDirection()">
-                            <i class="fas fa-sort-amount-up" id="sortIcon"></i>
+                    <div class="filter-actions">
+                        <button class="btn btn-secondary" onclick="applyAdvancedFilters()">
+                            <i class="fas fa-filter"></i> Aplicar Filtros
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearAdvancedFilters()">
+                            <i class="fas fa-times"></i> Limpar
                         </button>
                     </div>
                 </div>
