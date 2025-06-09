@@ -693,23 +693,29 @@ body {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background-color: var(--bg-secondary);
   border-radius: 6px;
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  cursor: grab;
+  cursor: move;
   transition: all 0.2s ease;
   user-select: none;
+  margin-bottom: 8px;
 }
 
 .event-template:hover {
   background-color: var(--bg-tertiary);
   transform: translateY(-1px);
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .event-template:active {
-  cursor: grabbing;
+  opacity: 0.7;
   transform: scale(0.98);
+}
+
+.event-template.fc-dragging {
+  opacity: 0.6;
+  transform: rotate(5deg);
 }
 
 .event-color {
@@ -717,6 +723,29 @@ body {
   height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.event-color.novo { background-color: #6366f1; }
+.event-color.contato { background-color: #f59e0b; }
+.event-color.qualificado { background-color: #10b981; }
+.event-color.proposta { background-color: #8b5cf6; }
+.event-color.negociacao { background-color: #ef4444; }
+
+.event-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* FullCalendar drag styles */
+.fc-dragging .event-template {
+  pointer-events: none;
+}
+
+/* Indicador visual quando arrastar sobre o calendário */
+.fc-day:hover {
+  background-color: var(--bg-tertiary) !important;
 }
 
 .event-color.novo {
@@ -743,17 +772,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.event-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.event-subtitle {
-  font-size: 11px;
-  color: var(--text-secondary);
 }
 
 /* Recent History */
@@ -1120,8 +1138,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 20px;padding-top: 20px;
   border-top: 1px solid var(--border-color);
 }
 

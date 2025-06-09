@@ -814,26 +814,25 @@ async function initializeCalendar() {
         droppable: true,
         dropAccept: '.event-template',
         drop: function(info) {
-            console.log('Drop detectado no calendário:', info);
+            console.log('🎯 Drop detectado no calendário!', {
+                date: info.date,
+                draggedEl: info.draggedEl,
+                eventType: info.draggedEl.getAttribute('data-event-type')
+            });
             
-            // Pegar o elemento que foi arrastado
-            const draggedEl = info.draggedEl;
-            const eventType = draggedEl.getAttribute('data-event-type');
+            const eventType = info.draggedEl.getAttribute('data-event-type');
             
             if (eventType) {
                 // Usar a data exata onde foi solto
                 const dropDate = new Date(info.date);
-                console.log('Data do drop:', dropDate.toISOString());
                 
                 // Se for uma visualização de dia ou semana, manter a hora. Caso contrário, definir uma hora padrão
                 if (calendar.view.type === 'dayGridMonth') {
                     dropDate.setHours(9, 0, 0, 0); // 9:00 AM como padrão para vista mensal
                 }
                 
+                console.log('📅 Criando evento na data:', dropDate);
                 createEventFromTemplate(eventType, dropDate);
-                
-                // Opcional: remover o elemento visual do drag
-                // draggedEl.style.display = 'none';
             }
         },
         eventClick: function(info) {
@@ -882,56 +881,49 @@ async function initializeCalendar() {
     // Renderizar o calendário primeiro
     calendar.render();
     
-    // Depois configurar o drag and drop externo
-    setTimeout(() => {
-        setupCalendarDragDrop();
-        console.log('Drag and drop configurado após renderização do calendário');
-    }, 100);
+    // Configurar drag and drop externo
+    setupCalendarDragDrop();
 }
 
 function setupCalendarDragDrop() {
-    // Aguardar o calendário estar totalmente carregado antes de configurar drag
+    // Aguardar o calendário estar totalmente carregado
     if (!calendar) {
-        console.log('Calendário não inicializado ainda, aguardando...');
+        console.log('⚠️ Calendário não inicializado, aguardando...');
+        setTimeout(setupCalendarDragDrop, 100);
         return;
     }
 
-    const eventTemplates = document.querySelectorAll('.event-template');
-    console.log('Configurando drag and drop para', eventTemplates.length, 'templates');
+    // Importar Draggable do FullCalendar
+    const { Draggable } = FullCalendar;
+    
+    const containerEl = document.querySelector('.predefined-events');
+    if (!containerEl) {
+        console.log('⚠️ Container de eventos não encontrado');
+        return;
+    }
 
-    eventTemplates.forEach(template => {
-        // Configurar como draggable
-        template.draggable = true;
-        
-        // Criar objeto de dados para FullCalendar External Draggable
-        const eventData = {
-            id: 'external-' + template.getAttribute('data-event-type'),
-            title: template.querySelector('.event-title').textContent,
-            backgroundColor: getTemplateColor(template.getAttribute('data-event-type')),
-            borderColor: getTemplateColor(template.getAttribute('data-event-type')),
-            extendedProps: {
-                eventType: template.getAttribute('data-event-type'),
-                isExternal: true
-            }
-        };
-
-        // Associar dados do evento ao elemento
-        template._eventData = eventData;
-        
-        template.addEventListener('dragstart', function(e) {
-            this.style.opacity = '0.5';
-            console.log('Drag iniciado para:', this.getAttribute('data-event-type'));
+    // Inicializar FullCalendar Draggable
+    new Draggable(containerEl, {
+        itemSelector: '.event-template',
+        eventData: function(eventEl) {
+            const eventType = eventEl.getAttribute('data-event-type');
+            const title = eventEl.querySelector('.event-title').textContent;
             
-            // Definir dados para o drag
-            e.dataTransfer.effectAllowed = 'copy';
-            e.dataTransfer.setData('text/plain', ''); // Necessário para alguns navegadores
-        });
-
-        template.addEventListener('dragend', function(e) {
-            this.style.opacity = '1';
-            console.log('Drag finalizado');
-        });
+            console.log('🎯 Configurando dados do evento:', { eventType, title });
+            
+            return {
+                title: title,
+                backgroundColor: getTemplateColor(eventType),
+                borderColor: getTemplateColor(eventType),
+                extendedProps: {
+                    eventType: eventType,
+                    isExternal: true
+                }
+            };
+        }
     });
+
+    console.log('✅ FullCalendar Draggable configurado com sucesso!');
 }
 
 async function createEventFromTemplate(eventType, date) {
