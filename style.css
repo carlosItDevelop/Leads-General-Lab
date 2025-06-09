@@ -795,6 +795,42 @@ body {
   overflow-y: auto;
 }
 
+/* Custom Scrollbars for Calendar Sidebar */
+.predefined-events::-webkit-scrollbar,
+.history-list::-webkit-scrollbar,
+.calendar-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.predefined-events::-webkit-scrollbar-track,
+.history-list::-webkit-scrollbar-track,
+.calendar-sidebar::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.predefined-events::-webkit-scrollbar-thumb,
+.history-list::-webkit-scrollbar-thumb,
+.calendar-sidebar::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.predefined-events::-webkit-scrollbar-thumb:hover,
+.history-list::-webkit-scrollbar-thumb:hover,
+.calendar-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Firefox scrollbar styles */
+.predefined-events,
+.history-list,
+.calendar-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) var(--bg-tertiary);
+}
+
 .history-item {
   display: flex;
   align-items: flex-start;
