@@ -803,6 +803,8 @@ async function initializeCalendar() {
         eventBorderColor: '#3b82f6',
         eventTextColor: '#ffffff',
         events: calendarEvents,
+        droppable: true,
+        dropAccept: '.event-template',
         eventClick: function(info) {
             const event = info.event;
             const props = event.extendedProps;
@@ -841,15 +843,23 @@ async function initializeCalendar() {
             document.getElementById('activityModal').style.display = 'block';
         },
         drop: function(info) {
-            // Função chamada quando um evento é dropado no calendário
+            // Função chamada quando um evento externo é dropado no calendário
             const eventType = info.draggedEl.getAttribute('data-event-type');
+            console.log('Drop detectado:', { eventType, date: info.date, dateStr: info.dateStr });
+            
             if (eventType) {
-                createEventFromTemplate(eventType, info.date);
+                // Usar a data exata onde foi solto
+                const dropDate = new Date(info.date);
+                // Se for uma visualização de dia ou semana, manter a hora. Caso contrário, definir uma hora padrão
+                if (info.view.type === 'dayGridMonth') {
+                    dropDate.setHours(9, 0, 0, 0); // 9:00 AM como padrão para vista mensal
+                }
+                
+                createEventFromTemplate(eventType, dropDate);
+                
+                // Remover o elemento visual do drag (opcional)
+                info.draggedEl.parentNode.removeChild(info.draggedEl);
             }
-        },
-        eventReceive: function(info) {
-            // Função chamada quando um evento externo é adicionado
-            console.log('Evento recebido:', info.event);
         },
         eventDidMount: function(info) {
             // Add tooltip
@@ -862,45 +872,25 @@ function setupCalendarDragDrop() {
     const eventTemplates = document.querySelectorAll('.event-template');
 
     eventTemplates.forEach(template => {
+        // Configurar como draggable para FullCalendar
+        template.draggable = true;
+        
         template.addEventListener('dragstart', function(e) {
-            e.dataTransfer.setData('text/plain', this.getAttribute('data-event-type'));
+            // FullCalendar vai gerenciar o data transfer automaticamente
             this.style.opacity = '0.5';
+            console.log('Drag iniciado para:', this.getAttribute('data-event-type'));
         });
 
         template.addEventListener('dragend', function(e) {
             this.style.opacity = '1';
+            console.log('Drag finalizado');
         });
     });
-
-    // Configurar o calendário para aceitar drops
-    const calendarEl = document.getElementById('calendar-widget');
-    if (calendarEl) {
-        // Permitir que o calendário aceite drops
-        calendarEl.addEventListener('dragover', function(e) {
-            e.preventDefault();
-        });
-
-        calendarEl.addEventListener('drop', function(e) {
-            e.preventDefault();
-            const eventType = e.dataTransfer.getData('text/plain');
-
-            // Tentar determinar a data baseada na posição do drop
-            const rect = calendarEl.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            // Para uma implementação mais simples, usar a data atual
-            const dropDate = new Date();
-            dropDate.setHours(9, 0, 0, 0);
-
-            if (eventType) {
-                createEventFromTemplate(eventType, dropDate);
-            }
-        });
-    }
 }
 
 async function createEventFromTemplate(eventType, date) {
+    console.log('Criando evento do template:', { eventType, date: date.toISOString() });
+    
     const eventTemplates = {
         'novo': {
             title: 'Novo Lead - Contato Inicial',
@@ -935,9 +925,13 @@ async function createEventFromTemplate(eventType, date) {
     };
 
     const template = eventTemplates[eventType];
-    if (!template || !calendar) return;
+    if (!template || !calendar) {
+        console.error('Template não encontrado ou calendário não inicializado:', { eventType, template, calendar });
+        return;
+    }
 
     const startDate = new Date(date);
+    console.log('Data final do evento:', startDate.toISOString());
     
     const activityData = {
         lead_id: null,
