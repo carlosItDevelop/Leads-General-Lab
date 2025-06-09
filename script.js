@@ -1604,6 +1604,18 @@ function openEventModal() {
         });
     }
 
+    // ✨ RESETAR TEXTOS DO MODAL PARA MODO CRIAÇÃO
+    const modalTitle = document.querySelector('#activityModal .modal-header h2');
+    const submitButton = document.querySelector('#activityModal .modal-footer .btn-primary');
+    
+    if (modalTitle) {
+        modalTitle.textContent = 'Agendar Atividade';
+    }
+    
+    if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-plus"></i> Agendar';
+    }
+
     document.getElementById('activityModal').style.display = 'block';
 }
 
@@ -1999,6 +2011,18 @@ async function submitActivity() {
             eventIdInput.remove();
         }
 
+        // ✨ RESETAR TEXTOS DO MODAL APÓS SALVAR
+        const modalTitle = document.querySelector('#activityModal .modal-header h2');
+        const submitButton = document.querySelector('#activityModal .modal-footer .btn-primary');
+        
+        if (modalTitle) {
+            modalTitle.textContent = 'Agendar Atividade';
+        }
+        
+        if (submitButton) {
+            submitButton.innerHTML = '<i class="fas fa-plus"></i> Agendar';
+        }
+
     } catch (error) {
         console.error('Erro ao salvar atividade:', error);
         showNotification('Erro ao salvar atividade', 'error');
@@ -2295,10 +2319,17 @@ function openEditEventModal(event) {
     document.getElementById('activityTitle').value = event.title;
     document.getElementById('activityDescription').value = props.description || '';
     
-    // Converter data para formato datetime-local
+    // Converter data para formato datetime-local (corrigir timezone)
     const startDate = new Date(event.start);
-    const localDateTime = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000));
-    document.getElementById('activityDateTime').value = localDateTime.toISOString().slice(0, 16);
+    // Usar formato ISO sem conversão de timezone que estava causando problemas
+    const year = startDate.getFullYear();
+    const month = String(startDate.getMonth() + 1).padStart(2, '0');
+    const day = String(startDate.getDate()).padStart(2, '0');
+    const hours = String(startDate.getHours()).padStart(2, '0');
+    const minutes = String(startDate.getMinutes()).padStart(2, '0');
+    const dateTimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+    
+    document.getElementById('activityDateTime').value = dateTimeValue;
     
     // Adicionar ID do evento como atributo hidden
     const eventIdInput = document.createElement('input');
@@ -2324,6 +2355,18 @@ function openEditEventModal(event) {
     } else {
         // Apenas selecionar o lead correto
         leadSelect.value = props.leadId || '';
+    }
+    
+    // ✨ MUDAR TEXTOS DO MODAL PARA MODO EDIÇÃO
+    const modalTitle = document.querySelector('#activityModal .modal-header h2');
+    const submitButton = document.querySelector('#activityModal .modal-footer .btn-primary');
+    
+    if (modalTitle) {
+        modalTitle.textContent = 'Editar Atividade';
+    }
+    
+    if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
     }
     
     // Abrir modal
