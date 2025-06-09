@@ -444,6 +444,24 @@ const api = {
         return result.rows[0];
     },
 
+    async updateTask(id, taskData) {
+        const { title, description, due_date, priority, lead_id, assignee, progress } = taskData;
+        
+        const result = await pool.query(`
+            UPDATE tasks 
+            SET title = $1, description = $2, due_date = $3, priority = $4, 
+                lead_id = $5, assignee = $6, progress = $7, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $8
+            RETURNING *
+        `, [title, description, due_date, priority, lead_id, assignee, progress || 0, id]);
+
+        if (result.rows.length === 0) {
+            throw new Error('Tarefa não encontrada');
+        }
+
+        return result.rows[0];
+    },
+
     async updateTaskStatus(id, status) {
         const result = await pool.query(`
             UPDATE tasks 

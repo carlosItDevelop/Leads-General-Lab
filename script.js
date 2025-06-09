@@ -2392,11 +2392,12 @@ async function submitTask() {
     const taskData = {
         title: formData.get('title'),
         description: formData.get('description'),
-        dueDate: formData.get('dueDate'),
+        due_date: formData.get('dueDate'),
         priority: formData.get('priority'),
-        status: 'pending',
-        leadId: parseInt(formData.get('leadId')) || null,
-        assignee: formData.get('assignee')
+        status: taskId ? undefined : 'pending', // Manter status atual se editando
+        lead_id: parseInt(formData.get('leadId')) || null,
+        assignee: formData.get('assignee'),
+        progress: parseInt(formData.get('progress')) || 0
     };
 
     try {
@@ -2404,13 +2405,13 @@ async function submitTask() {
             // Edit existing task
             const updatedTask = await fetchFromAPI(`/tasks/${taskId}`, {
                 method: 'PUT',
-                body: JSON.stringify({...taskData, id: parseInt(taskId)})
+                body: JSON.stringify(taskData)
             });
 
             // Update local array
             const taskIndex = tasks.findIndex(t => t.id === parseInt(taskId));
             if (taskIndex !== -1) {
-                tasks[taskIndex] = {...tasks[taskIndex], ...taskData, id: parseInt(taskId)};
+                tasks[taskIndex] = {...tasks[taskIndex], ...updatedTask};
             }
 
             await addLog({
@@ -2418,12 +2419,13 @@ async function submitTask() {
                 title: 'Tarefa atualizada',
                 description: `Tarefa "${taskData.title}" foi editada`,
                 user_id: 'Usuário Atual',
-                lead_id: taskData.leadId
+                lead_id: taskData.lead_id
             });
 
             showNotification('Tarefa atualizada com sucesso!', 'success');
         } else {
             // Create new task
+            taskData.status = 'pending'; // Para novas tarefas
             const newTask = await fetchFromAPI('/tasks', {
                 method: 'POST',
                 body: JSON.stringify(taskData)
@@ -2437,7 +2439,7 @@ async function submitTask() {
                 title: 'Nova tarefa criada',
                 description: `Tarefa "${taskData.title}" foi adicionada ao sistema`,
                 user_id: 'Usuário Atual',
-                lead_id: taskData.leadId
+                lead_id: taskData.lead_id
             });
 
             showNotification('Tarefa criada com sucesso!', 'success');
@@ -2605,6 +2607,8 @@ window.updateTaskProgress = updateTaskProgress;
 window.addTaskComment = addTaskComment;
 window.deleteTaskWithConfirmation = deleteTaskWithConfirmation;
 window.updateProgressDisplay = updateProgressDisplay;
+window.editTaskInline = editTaskInline;
+window.openTaskEditModal = openTaskEditModal;
 
 // Lead Notes Management
 async function loadAllLeadNotes() {
@@ -3163,6 +3167,55 @@ function updateProgressDisplay(value) {
     if (display) {
         display.textContent = `${value}%`;
     }
+}
+
+function editTaskInline(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+        showNotification('Tarefa não encontrada', 'error');
+        return;
+    }
+
+    // Abrir modal de edição de tarefa
+    openTaskEditModal(taskId);
+}
+
+function openTaskEditModal(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+        showNotification('Tarefa não encontrada', 'error');
+        return;
+    }
+
+    // Reset form e preencher com dados da tarefa
+    const form = document.getElementById('taskForm');
+    form.reset();
+    
+    document.getElementById('taskId').value = task.id;
+    document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskDescription').value = task.description || '';
+    document.getElementById('taskDueDate').value = task.due_date || task.dueDate;
+    document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskAssignee').value = task.assignee;
+    document.getElementById('taskProgress').value = task.progress || 0;
+    document.getElementById('progressDisplay').textContent = `${task.progress || 0}%`;
+
+    // Preencher dropdown de leads
+    const leadSelect = document.getElementById('taskLeadId');
+    leadSelect.innerHTML = '<option value="">Selecione um lead</option>';
+    leads.forEach(lead => {
+        const option = document.createElement('option');
+        option.value = lead.id;
+        option.textContent = `${lead.name} - ${lead.company}`;
+        option.selected = lead.id === task.leadId || lead.id === task.lead_id;
+        leadSelect.appendChild(option);
+    });
+
+    // Alterar título do modal
+    document.getElementById('taskModalTitle').textContent = `Editar Tarefa - ${task.title}`;
+
+    // Abrir modal
+    document.getElementById('taskModal').style.display = 'block';
 }
 
 function formatFileSize(bytes) {

@@ -76,6 +76,16 @@ app.post('/api/tasks', async (req, res) => {
     }
 });
 
+app.put('/api/tasks/:id', async (req, res) => {
+    try {
+        const updatedTask = await api.updateTask(req.params.id, req.body);
+        res.json(updatedTask);
+    } catch (error) {
+        console.error('Erro ao atualizar tarefa:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
 app.put('/api/tasks/:id/status', async (req, res) => {
     try {
         const updatedTask = await api.updateTaskStatus(req.params.id, req.body.status);
