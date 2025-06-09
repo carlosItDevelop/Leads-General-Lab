@@ -486,61 +486,148 @@ function renderTasksList() {
 
 function openTaskDetails(taskId) {
     const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+        showNotification('Tarefa não encontrada', 'error');
+        return;
+    }
 
-    const lead = leads.find(l => l.id === task.leadId);
-    const statusBadge = task.status === 'completed' ? 'success' : 'warning';
-    const priorityColor = task.priority === 'high' ? '#ef4444' : task.priority === 'medium' ? '#f59e0b' : '#10b981';
+    // Buscar informações do lead relacionado, se existir
+    const lead = task.leadId ? leads.find(l => l.id === task.leadId) : null;
+
+    // Definir cores baseadas no status e prioridade
+    const statusColors = {
+        completed: '#10b981',
+        pending: '#f59e0b'
+    };
+
+    const priorityColors = {
+        high: '#ef4444',
+        medium: '#f59e0b',
+        low: '#10b981'
+    };
+
+    const statusLabels = {
+        completed: 'Concluída',
+        pending: 'Pendente'
+    };
+
+    const priorityLabels = {
+        high: 'Alta',
+        medium: 'Média',
+        low: 'Baixa'
+    };
+
+    const statusColor = statusColors[task.status] || '#6b7280';
+    const priorityColor = priorityColors[task.priority] || '#6b7280';
+    const statusLabel = statusLabels[task.status] || task.status;
+    const priorityLabel = priorityLabels[task.priority] || task.priority;
+
+    // Verificar se a tarefa está atrasada
+    const dueDate = new Date(task.dueDate);
+    const today = new Date();
+    const isOverdue = task.status === 'pending' && dueDate < today;
+
+    // Calcular dias restantes ou em atraso
+    const timeDiff = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+    const timeStatus = isOverdue ? 
+        `${Math.abs(timeDiff)} dia${Math.abs(timeDiff) !== 1 ? 's' : ''} em atraso` :
+        timeDiff === 0 ? 'Vence hoje' :
+        timeDiff === 1 ? 'Vence amanhã' :
+        `${timeDiff} dia${timeDiff !== 1 ? 's' : ''} restante${timeDiff !== 1 ? 's' : ''}`;
 
     Swal.fire({
         title: 'Detalhes da Tarefa',
         html: `
             <div style="text-align: left; padding: 20px;">
+                <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 20px; background-color: ${statusColor}; color: white; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-${task.status === 'completed' ? 'check' : 'clock'}"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; color: var(--text-primary); font-size: 18px;">${task.title}</h3>
+                        <span style="background-color: ${statusColor}20; color: ${statusColor}; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                            ${statusLabel}
+                        </span>
+                    </div>
+                </div>
+
+                ${task.description ? `
                 <div style="margin-bottom: 15px;">
-                    <h3 style="margin: 0 0 10px 0; color: var(--text-primary);">${task.title}</h3>
-                    <span class="status-badge status-${task.status}" style="font-size: 11px; padding: 4px 8px; border-radius: 12px; text-transform: uppercase; background-color: ${statusBadge === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)'}; color: ${statusBadge === 'success' ? '#10b981' : '#f59e0b'};">
-                        ${task.status === 'completed' ? 'Concluída' : 'Pendente'}
+                    <strong style="color: var(--text-primary);">Descrição:</strong><br>
+                    <p style="margin: 8px 0; color: var(--text-secondary); background-color: var(--bg-secondary); padding: 12px; border-radius: 6px; border-left: 3px solid ${statusColor};">
+                        ${task.description}
+                    </p>
+                </div>
+                ` : ''}
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text-primary);">Data de Vencimento:</strong><br>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                        <span style="color: var(--text-secondary); font-family: monospace;">
+                            ${formatDate(task.dueDate)}
+                        </span>
+                        <span style="color: ${isOverdue ? '#ef4444' : timeDiff <= 1 ? '#f59e0b' : '#10b981'}; font-size: 12px; font-weight: 600; background-color: ${isOverdue ? '#ef444420' : timeDiff <= 1 ? '#f59e0b20' : '#10b98120'}; padding: 2px 6px; border-radius: 8px;">
+                            ${timeStatus}
+                        </span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text-primary);">Prioridade:</strong><br>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                        <div style="width: 12px; height: 12px; background-color: ${priorityColor}; border-radius: 50%;"></div>
+                        <span style="color: ${priorityColor}; font-weight: 600;">
+                            ${priorityLabel}
+                        </span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text-primary);">Responsável:</strong><br>
+                    <span style="color: var(--text-secondary);">
+                        ${task.assignee}
                     </span>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                    <strong>Descrição:</strong><br>
-                    <p style="margin: 5px 0; color: var(--text-secondary);">${task.description}</p>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                    <strong>Data de Vencimento:</strong><br>
-                    <span style="color: var(--text-secondary);">${formatDate(task.dueDate)}</span>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                    <strong>Prioridade:</strong><br>
-                    <span style="color: ${priorityColor}; font-weight: 600;">
-                        ${task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa'}
-                    </span>
-                </div>
-
-                <div style="margin-bottom: 15px;">
-                    <strong>Responsável:</strong><br>
-                    <span style="color: var(--text-secondary);">${task.assignee}</span>
                 </div>
 
                 ${lead ? `
-                <div style="margin-bottom: 15px;">
-                    <strong>Lead Relacionado:</strong><br>
-                    <span style="color: var(--primary-color); cursor: pointer;" onclick="openLeadDetails(${lead.id})">${lead.name} - ${lead.company}</span>
+                <div style="margin-bottom: 15px; padding: 12px; background-color: var(--bg-secondary); border-radius: 6px;">
+                    <strong style="color: var(--text-primary);">Lead Relacionado:</strong><br>
+                    <div style="margin-top: 8px;">
+                        <span style="color: var(--primary-color); font-weight: 600; cursor: pointer;" onclick="openLeadDetails(${lead.id}); Swal.close();">
+                            ${lead.name}
+                        </span>
+                        <br>
+                        <span style="color: var(--text-secondary); font-size: 14px;">
+                            ${lead.company} • ${lead.email}
+                        </span>
+                        <br>
+                        <span class="status-badge status-${lead.status}" style="font-size: 11px; margin-top: 4px; display: inline-block;">
+                            ${getStatusLabel(lead.status)}
+                        </span>
+                    </div>
                 </div>
                 ` : ''}
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text-primary);">ID da Tarefa:</strong><br>
+                    <span style="color: var(--text-muted); font-family: monospace; font-size: 12px;">
+                        #${task.id}
+                    </span>
+                </div>
             </div>
         `,
         icon: 'info',
         showCancelButton: true,
         confirmButtonText: task.status === 'completed' ? 'Marcar como Pendente' : 'Marcar como Concluída',
         cancelButtonText: 'Fechar',
-        confirmButtonColor: '#3b82f6',
+        confirmButtonColor: statusColor,
         cancelButtonColor: '#6b7280',
+        width: '600px',
         background: currentTheme === 'dark' ? '#1e293b' : '#ffffff',
-        color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+        color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b',
+        customClass: {
+            popup: 'task-details-modal'
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             toggleTaskStatus(taskId);
