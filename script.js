@@ -852,15 +852,20 @@ async function initializeCalendar() {
                 `,
                 icon: 'info',
                 showCancelButton: true,
+                showDenyButton: true,
                 confirmButtonText: 'Editar',
+                denyButtonText: 'Excluir',
                 cancelButtonText: 'Fechar',
                 confirmButtonColor: '#3b82f6',
+                denyButtonColor: '#ef4444',
                 cancelButtonColor: '#6b7280',
                 background: currentTheme === 'dark' ? '#1e293b' : '#ffffff',
                 color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    showNotification('Funcionalidade de edição em desenvolvimento', 'info');
+                    openEditEventModal(event);
+                } else if (result.isDenied) {
+                    confirmDeleteEvent(event);
                 }
             });
         },
@@ -1911,6 +1916,7 @@ async function submitActivity() {
     const leadIdValue = formData.get('leadId');
     const leadId = leadIdValue && leadIdValue !== '' ? parseInt(leadIdValue) : null;
     const lead = leadId ? leads.find(l => l.id === leadId) : null;
+    const eventId = formData.get('eventId'); // Para edição
 
     const activityData = {
         lead_id: leadId,
@@ -1921,40 +1927,79 @@ async function submitActivity() {
     };
 
     try {
-        // Salvar no banco
-        const newActivity = await fetchFromAPI('/activities', {
-            method: 'POST',
-            body: JSON.stringify(activityData)
-        });
-
-        // Adicionar ao calendário
-        if (calendar) {
-            calendar.addEvent({
-                id: newActivity.id.toString(),
-                title: newActivity.title,
-                start: newActivity.scheduled_date,
-                backgroundColor: getEventColor(newActivity.type),
-                borderColor: getEventColor(newActivity.type),
-                extendedProps: {
-                    leadId: newActivity.lead_id,
-                    type: newActivity.type,
-                    description: newActivity.description
-                }
+        if (eventId) {
+            // Editar evento existente
+            const updatedActivity = await fetchFromAPI(`/activities/${eventId}`, {
+                method: 'PUT',
+                body: JSON.stringify(activityData)
             });
+
+            // Atualizar evento no calendário
+            const calendarEvent = calendar.getEventById(eventId);
+            if (calendarEvent) {
+                calendarEvent.setProp('title', updatedActivity.title);
+                calendarEvent.setStart(updatedActivity.scheduled_date);
+                calendarEvent.setExtendedProp('leadId', updatedActivity.lead_id);
+                calendarEvent.setExtendedProp('type', updatedActivity.type);
+                calendarEvent.setExtendedProp('description', updatedActivity.description);
+                calendarEvent.setProp('backgroundColor', getEventColor(updatedActivity.type));
+                calendarEvent.setProp('borderColor', getEventColor(updatedActivity.type));
+            }
+
+            // Log da edição
+            await addLog({
+                type: 'meeting',
+                title: 'Atividade editada',
+                description: `Evento "${activityData.title}" foi atualizado`,
+                user_id: 'Usuário Atual',
+                lead_id: leadId
+            });
+
+            showNotification('Atividade atualizada com sucesso!', 'success');
+        } else {
+            // Criar nova atividade
+            const newActivity = await fetchFromAPI('/activities', {
+                method: 'POST',
+                body: JSON.stringify(activityData)
+            });
+
+            // Adicionar ao calendário
+            if (calendar) {
+                calendar.addEvent({
+                    id: newActivity.id.toString(),
+                    title: newActivity.title,
+                    start: newActivity.scheduled_date,
+                    backgroundColor: getEventColor(newActivity.type),
+                    borderColor: getEventColor(newActivity.type),
+                    extendedProps: {
+                        leadId: newActivity.lead_id,
+                        type: newActivity.type,
+                        description: newActivity.description
+                    }
+                });
+            }
+
+            // Log da atividade
+            await addLog({
+                type: 'meeting',
+                title: 'Atividade agendada',
+                description: `${activityData.title}${lead ? ` para ${lead.name}` : ''} agendada`,
+                user_id: 'Usuário Atual',
+                lead_id: leadId
+            });
+
+            showNotification('Atividade agendada com sucesso!', 'success');
         }
 
-        // Log da atividade
-        await addLog({
-            type: 'meeting',
-            title: 'Atividade agendada',
-            description: `${activityData.title}${lead ? ` para ${lead.name}` : ''} agendada`,
-            user_id: 'Usuário Atual',
-            lead_id: leadId
-        });
-
+        // Limpar e fechar modal
         closeModal('activityModal');
         form.reset();
-        showNotification('Atividade agendada com sucesso!', 'success');
+        
+        // Remover input hidden do eventId se existir
+        const eventIdInput = document.getElementById('activityEventId');
+        if (eventIdInput) {
+            eventIdInput.remove();
+        }
 
     } catch (error) {
         console.error('Erro ao salvar atividade:', error);
@@ -2235,6 +2280,104 @@ async function submitTask() {
     } catch (error) {
         console.error('Erro ao salvar tarefa:', error);
         showNotification('Erro ao salvar tarefa', 'error');
+    }
+}
+
+// Função para abrir modal de edição de evento
+function openEditEventModal(event) {
+    const props = event.extendedProps;
+    
+    // Reset form
+    const form = document.getElementById('activityForm');
+    form.reset();
+    
+    // Preencher dados do evento
+    document.getElementById('activityLeadId').value = props.leadId || '';
+    document.getElementById('activityType').value = props.type || 'meeting';
+    document.getElementById('activityTitle').value = event.title;
+    document.getElementById('activityDescription').value = props.description || '';
+    
+    // Converter data para formato datetime-local
+    const startDate = new Date(event.start);
+    const localDateTime = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000));
+    document.getElementById('activityDateTime').value = localDateTime.toISOString().slice(0, 16);
+    
+    // Adicionar ID do evento como atributo hidden
+    const eventIdInput = document.createElement('input');
+    eventIdInput.type = 'hidden';
+    eventIdInput.name = 'eventId';
+    eventIdInput.value = event.id;
+    eventIdInput.id = 'activityEventId';
+    form.appendChild(eventIdInput);
+    
+    // Carregar leads se necessário
+    const leadSelect = document.getElementById('activityLeadId');
+    if (leadSelect.children.length <= 1) {
+        leadSelect.innerHTML = '<option value="">Selecione um lead (opcional)</option>';
+        if (leads && leads.length > 0) {
+            leads.forEach(lead => {
+                const option = document.createElement('option');
+                option.value = lead.id;
+                option.textContent = `${lead.name} - ${lead.company}`;
+                option.selected = lead.id == props.leadId;
+                leadSelect.appendChild(option);
+            });
+        }
+    } else {
+        // Apenas selecionar o lead correto
+        leadSelect.value = props.leadId || '';
+    }
+    
+    // Abrir modal
+    document.getElementById('activityModal').style.display = 'block';
+}
+
+// Função para confirmar exclusão de evento
+async function confirmDeleteEvent(event) {
+    const result = await Swal.fire({
+        title: 'Confirmar Exclusão',
+        text: `Tem certeza que deseja excluir o evento "${event.title}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sim, excluir!',
+        cancelButtonText: 'Cancelar',
+        background: currentTheme === 'dark' ? '#1e293b' : '#ffffff',
+        color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            // Deletar do banco
+            await fetchFromAPI(`/activities/${event.id}`, {
+                method: 'DELETE'
+            });
+
+            // Remover do calendário
+            event.remove();
+
+            // Log da exclusão
+            await addLog({
+                type: 'meeting',
+                title: 'Atividade excluída',
+                description: `Evento "${event.title}" foi removido da agenda`,
+                user_id: 'Usuário Atual',
+                lead_id: event.extendedProps.leadId
+            });
+
+            Swal.fire({
+                title: 'Excluído!',
+                text: 'O evento foi excluído com sucesso.',
+                icon: 'success',
+                confirmButtonColor: '#10b981',
+                background: currentTheme === 'dark' ? '#1e293b' : '#ffffff',
+                color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+            });
+        } catch (error) {
+            console.error('Erro ao excluir evento:', error);
+            showNotification('Erro ao excluir evento', 'error');
+        }
     }
 }
 
