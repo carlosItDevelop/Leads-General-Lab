@@ -1129,10 +1129,30 @@ body {
   gap: 16px;
   padding: 16px 0;
   border-bottom: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  margin: 0 -12px;
+  padding: 16px 12px;
 }
 
 .log-item:last-child {
   border-bottom: none;
+}
+
+.log-item:hover {
+  background-color: var(--bg-secondary);
+  transform: translateX(4px);
+}
+
+.log-actions {
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.log-item:hover .log-actions {
+  opacity: 1;
 }
 
 .log-icon {
@@ -1206,6 +1226,16 @@ body {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Log Details Modal */
+.log-details-modal {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.log-details-modal .swal2-html-container {
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .modal-content {

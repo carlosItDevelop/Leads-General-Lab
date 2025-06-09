@@ -1282,14 +1282,17 @@ function renderLogsTimeline() {
     logsTimeline.innerHTML = `
         <div class="logs-content">
             ${paginatedLogs.map(log => `
-                <div class="log-item">
+                <div class="log-item" style="cursor: pointer;" onclick="openLogDetails(${log.id})">
                     <div class="log-icon">
                         <i class="fas fa-${getLogIcon(log.type)}"></i>
                     </div>
                     <div class="log-content">
                         <div class="log-title">${log.title}</div>
                         <div class="log-description">${log.description}</div>
-                        <div class="log-time">${formatDateTime(log.timestamp)} - ${log.userId}</div>
+                        <div class="log-time">${formatDateTime(log.timestamp)} - ${log.user_id || log.userId}</div>
+                    </div>
+                    <div class="log-actions">
+                        <i class="fas fa-chevron-right" style="color: var(--text-muted); font-size: 12px;"></i>
                     </div>
                 </div>
             `).join('')}
@@ -2112,6 +2115,7 @@ window.openTaskDetails = openTaskDetails;
 window.applyLogsFilters = applyLogsFilters;
 window.openNewCardModal = openNewCardModal;
 window.submitNewCard = submitNewCard;
+window.openLogDetails = openLogDetails;
 
 // Lead Notes Management
 async function loadAllLeadNotes() {
@@ -2225,6 +2229,115 @@ function renderRecentHistory() {
             </div>
         </div>
     `).join('');
+}
+
+function openLogDetails(logId) {
+    const log = logs.find(l => l.id === logId);
+    if (!log) {
+        showNotification('Log não encontrado', 'error');
+        return;
+    }
+
+    // Buscar informações do lead relacionado, se existir
+    const lead = log.lead_id ? leads.find(l => l.id === log.lead_id) : null;
+
+    // Definir cores baseadas no tipo de log
+    const typeColors = {
+        lead: '#3b82f6',
+        email: '#f59e0b',
+        call: '#10b981',
+        task: '#8b5cf6',
+        meeting: '#ef4444',
+        note: '#06b6d4'
+    };
+
+    const typeLabels = {
+        lead: 'Lead',
+        email: 'Email',
+        call: 'Ligação',
+        task: 'Tarefa',
+        meeting: 'Reunião',
+        note: 'Nota'
+    };
+
+    const typeColor = typeColors[log.type] || '#6b7280';
+    const typeLabel = typeLabels[log.type] || log.type;
+
+    Swal.fire({
+        title: 'Detalhes do Log',
+        html: `
+            <div style="text-align: left; padding: 20px;">
+                <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 20px; background-color: ${typeColor}; color: white; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-${getLogIcon(log.type)}"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; color: var(--text-primary); font-size: 18px;">${log.title}</h3>
+                        <span style="background-color: ${typeColor}20; color: ${typeColor}; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                            ${typeLabel}
+                        </span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text-primary);">Descrição:</strong><br>
+                    <p style="margin: 8px 0; color: var(--text-secondary); background-color: var(--bg-secondary); padding: 12px; border-radius: 6px; border-left: 3px solid ${typeColor};">
+                        ${log.description}
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text-primary);">Data e Hora:</strong><br>
+                    <span style="color: var(--text-secondary); font-family: monospace;">
+                        ${formatDateTime(log.timestamp)}
+                    </span>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text-primary);">Usuário:</strong><br>
+                    <span style="color: var(--text-secondary);">
+                        ${log.user_id || log.userId || 'Não informado'}
+                    </span>
+                </div>
+
+                ${lead ? `
+                <div style="margin-bottom: 15px; padding: 12px; background-color: var(--bg-secondary); border-radius: 6px;">
+                    <strong style="color: var(--text-primary);">Lead Relacionado:</strong><br>
+                    <div style="margin-top: 8px;">
+                        <span style="color: var(--primary-color); font-weight: 600; cursor: pointer;" onclick="openLeadDetails(${lead.id}); Swal.close();">
+                            ${lead.name}
+                        </span>
+                        <br>
+                        <span style="color: var(--text-secondary); font-size: 14px;">
+                            ${lead.company} • ${lead.email}
+                        </span>
+                        <br>
+                        <span class="status-badge status-${lead.status}" style="font-size: 11px; margin-top: 4px; display: inline-block;">
+                            ${getStatusLabel(lead.status)}
+                        </span>
+                    </div>
+                </div>
+                ` : ''}
+
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text-primary);">ID do Log:</strong><br>
+                    <span style="color: var(--text-muted); font-family: monospace; font-size: 12px;">
+                        #${log.id}
+                    </span>
+                </div>
+            </div>
+        `,
+        icon: 'info',
+        showConfirmButton: true,
+        confirmButtonText: 'Fechar',
+        confirmButtonColor: typeColor,
+        width: '600px',
+        background: currentTheme === 'dark' ? '#1e293b' : '#ffffff',
+        color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b',
+        customClass: {
+            popup: 'log-details-modal'
+        }
+    });
 }
 
 function getHistoryIcon(type) {
