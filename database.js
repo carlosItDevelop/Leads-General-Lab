@@ -85,6 +85,17 @@ async function initializeDatabase() {
             )
         `);
 
+        // Migração: Adicionar coluna scheduled_date se não existir
+        try {
+            await pool.query(`
+                ALTER TABLE activities 
+                ADD COLUMN IF NOT EXISTS scheduled_date TIMESTAMP
+            `);
+            console.log('Coluna scheduled_date adicionada/verificada na tabela activities');
+        } catch (error) {
+            console.log('Coluna scheduled_date já existe ou erro na migração:', error.message);
+        }
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS notes (
                 id SERIAL PRIMARY KEY,
@@ -96,6 +107,9 @@ async function initializeDatabase() {
             )
         `);
 
+        // Executar migrações necessárias
+        await runMigrations();
+
         console.log('Banco de dados inicializado com sucesso!');
 
         // Inserir dados de exemplo se não existirem
@@ -104,6 +118,43 @@ async function initializeDatabase() {
     } catch (error) {
         console.error('Erro ao inicializar banco de dados:', error);
         throw error;
+    }
+}
+
+// Executar migrações necessárias
+async function runMigrations() {
+    try {
+        console.log('Executando migrações de banco de dados...');
+        
+        // Verificar e corrigir estrutura da tabela activities
+        const activitiesColumns = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'activities'
+        `);
+        
+        const existingColumns = activitiesColumns.rows.map(row => row.column_name);
+        
+        if (!existingColumns.includes('scheduled_date')) {
+            await pool.query(`
+                ALTER TABLE activities 
+                ADD COLUMN scheduled_date TIMESTAMP
+            `);
+            console.log('✓ Coluna scheduled_date adicionada à tabela activities');
+        }
+        
+        if (!existingColumns.includes('created_at')) {
+            await pool.query(`
+                ALTER TABLE activities 
+                ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            `);
+            console.log('✓ Coluna created_at adicionada à tabela activities');
+        }
+        
+        console.log('Migrações concluídas com sucesso!');
+        
+    } catch (error) {
+        console.error('Erro durante migrações:', error);
     }
 }
 
