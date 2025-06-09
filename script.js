@@ -991,20 +991,18 @@ async function createEventFromTemplate(eventType, date) {
             body: JSON.stringify(activityData)
         });
 
-        // Adicionar ao calendário
-        calendar.addEvent({
-            id: newActivity.id.toString(),
-            title: newActivity.title,
-            start: newActivity.scheduled_date,
-            backgroundColor: template.color,
-            borderColor: template.color,
-            extendedProps: {
-                leadId: newActivity.lead_id,
-                type: newActivity.type,
-                description: newActivity.description,
-                createdFrom: 'template'
-            }
-        });
+        // O FullCalendar já criou o evento visual durante o drag & drop
+        // Precisamos apenas atualizar as propriedades do evento existente
+        const events = calendar.getEvents();
+        const newEvent = events[events.length - 1]; // O último evento criado
+        
+        if (newEvent && !newEvent.id) {
+            // Atualizar o evento temporário com os dados reais do banco
+            newEvent.setProp('id', newActivity.id.toString());
+            newEvent.setExtendedProp('leadId', newActivity.lead_id);
+            newEvent.setExtendedProp('type', newActivity.type);
+            newEvent.setExtendedProp('description', newActivity.description);
+        }
 
         // Log da atividade
         await addLog({
