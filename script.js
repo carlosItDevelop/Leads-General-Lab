@@ -475,23 +475,64 @@ async function updateLeadStatus(leadId, newStatus) {
 }
 
 // Tasks Management
+let currentTasksPage = 1;
+const tasksPerPage = 5;
+let currentTaskFilter = 'all';
+
 function renderTasksList() {
     const tasksList = document.getElementById('tasksList');
     if (!tasksList) return;
 
-    tasksList.innerHTML = tasks.map(task => `
-        <div class="task-item" data-status="${task.status}">
-            <input type="checkbox" class="task-checkbox" ${task.status === 'completed' ? 'checked' : ''} 
-                   onchange="toggleTaskStatus(${task.id})">
-            <div class="task-content">
-                <div class="task-title" style="cursor: pointer; color: var(--primary-color);" onclick="openTaskDetails(${task.id})">${task.title}</div>
-                <div class="task-description">${task.description}</div>
-            </div>
-            <div class="task-date">
-                <i class="fas fa-calendar"></i> ${formatDate(task.dueDate)}
-            </div>
+    // Apply current filter
+    let filteredTasks = tasks.filter(task => {
+        switch(currentTaskFilter) {
+            case 'pending':
+                return task.status === 'pending';
+            case 'completed':
+                return task.status === 'completed';
+            case 'overdue':
+                const dueDate = new Date(task.dueDate || task.due_date);
+                const today = new Date();
+                return task.status === 'pending' && dueDate < today;
+            default:
+                return true;
+        }
+    });
+
+    // Calculate pagination
+    const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
+    const startIndex = (currentTasksPage - 1) * tasksPerPage;
+    const endIndex = startIndex + tasksPerPage;
+    const paginatedTasks = filteredTasks.slice(startIndex, endIndex);
+
+    tasksList.innerHTML = `
+        <div class="tasks-content">
+            ${paginatedTasks.map(task => `
+                <div class="task-item" data-status="${task.status}">
+                    <input type="checkbox" class="task-checkbox" ${task.status === 'completed' ? 'checked' : ''} 
+                           onchange="toggleTaskStatus(${task.id})">
+                    <div class="task-content">
+                        <div class="task-title" style="cursor: pointer; color: var(--primary-color);" onclick="openTaskDetails(${task.id})">${task.title}</div>
+                        <div class="task-description">${task.description}</div>
+                    </div>
+                    <div class="task-date">
+                        <i class="fas fa-calendar"></i> ${formatDate(task.dueDate || task.due_date)}
+                    </div>
+                </div>
+            `).join('')}
         </div>
-    `).join('');
+        ${totalPages > 1 ? `
+        <div class="tasks-pagination">
+            <button class="btn btn-sm btn-secondary" ${currentTasksPage === 1 ? 'disabled' : ''} onclick="changeTasksPage(${currentTasksPage - 1})">
+                <i class="fas fa-chevron-left"></i> Anterior
+            </button>
+            <span class="pagination-info">Página ${currentTasksPage} de ${totalPages}</span>
+            <button class="btn btn-sm btn-secondary" ${currentTasksPage === totalPages ? 'disabled' : ''} onclick="changeTasksPage(${currentTasksPage + 1})">
+                Próxima <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        ` : ''}
+    `;
 }
 
 function openTaskDetails(taskId) {
@@ -646,30 +687,33 @@ function openTaskDetails(taskId) {
 }
 
 function filterTasks(filter) {
-    const taskItems = document.querySelectorAll('.task-item');
+    currentTaskFilter = filter;
+    currentTasksPage = 1; // Reset to first page when filtering
+    renderTasksList();
+}
 
-    taskItems.forEach(item => {
-        const status = item.getAttribute('data-status');
-        let show = false;
-
-        switch(filter) {
-            case 'all':
-                show = true;
-                break;
+function changeTasksPage(page) {
+    // Apply current filter to get filtered tasks count
+    let filteredTasks = tasks.filter(task => {
+        switch(currentTaskFilter) {
             case 'pending':
-                show = status === 'pending';
-                break;
+                return task.status === 'pending';
             case 'completed':
-                show = status === 'completed';
-                break;
+                return task.status === 'completed';
             case 'overdue':
-                // Implementation for overdue logic
-                show = status === 'pending'; // Simplified
-                break;
+                const dueDate = new Date(task.dueDate || task.due_date);
+                const today = new Date();
+                return task.status === 'pending' && dueDate < today;
+            default:
+                return true;
         }
-
-        item.style.display = show ? 'flex' : 'none';
     });
+
+    const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
+    if (page < 1 || page > totalPages) return;
+
+    currentTasksPage = page;
+    renderTasksList();
 }
 
 async function toggleTaskStatus(taskId) {
@@ -2186,6 +2230,7 @@ window.applyLogsFilters = applyLogsFilters;
 window.openNewCardModal = openNewCardModal;
 window.submitNewCard = submitNewCard;
 window.openLogDetails = openLogDetails;
+window.changeTasksPage = changeTasksPage;
 
 // Lead Notes Management
 async function loadAllLeadNotes() {

@@ -1030,10 +1030,10 @@ body {
   border-radius: 8px;
   box-shadow: var(--shadow);
   border: 1px solid var(--border-color);
+  padding: 20px;
 }
 
 .task-item {
-  padding: 16px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -1113,6 +1113,32 @@ body {
 
 .task-item:hover::after {
   opacity: 0.6;
+}
+
+/* Tasks Pagination */
+.tasks-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.tasks-pagination .pagination-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.tasks-pagination .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tasks-pagination .btn:disabled:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 /* Reports */
