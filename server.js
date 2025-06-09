@@ -303,6 +303,27 @@ app.get('/api/notes', async (req, res) => {
     }
 });
 
+// Get all attachments for files management
+app.get('/api/attachments', async (req, res) => {
+    try {
+        const attachments = await api.getAllAttachments();
+        res.json(attachments);
+    } catch (error) {
+        console.error('Erro ao buscar anexos:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+app.delete('/api/attachments/:id', async (req, res) => {
+    try {
+        await api.deleteTaskAttachment(req.params.id);
+        res.status(204).send();
+    } catch (error) {
+        console.error('Erro ao deletar anexo:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
 app.delete('/api/notes/:id', async (req, res) => {
     try {
         await api.deleteNote(req.params.id);

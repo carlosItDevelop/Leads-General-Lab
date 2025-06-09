@@ -596,6 +596,17 @@ const api = {
         await pool.query('DELETE FROM notes WHERE id = $1', [id]);
     },
 
+    // Get all attachments for files management
+    async getAllAttachments() {
+        const result = await pool.query(`
+            SELECT ta.*, t.title as task_title 
+            FROM task_attachments ta
+            LEFT JOIN tasks t ON ta.task_id = t.id
+            ORDER BY ta.created_at DESC
+        `);
+        return result.rows;
+    },
+
     // Task Comments
     async getTaskComments(taskId) {
         const result = await pool.query(
