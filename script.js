@@ -129,9 +129,11 @@ const sampleLogs = [
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
     setupEventListeners();
-    loadSampleData();
     initializeCharts();
-    initializeCalendar();
+    // Carregar dados primeiro, depois inicializar calendário
+    loadSampleData().then(() => {
+        initializeCalendar();
+    });
 });
 
 function initializeApp() {
@@ -206,10 +208,14 @@ function setupEventListeners() {
 
 async function loadSampleData() {
     try {
+        console.log('Carregando dados do servidor...');
+        
         // Carregar dados do banco
         leads = await fetchFromAPI('/leads');
         tasks = await fetchFromAPI('/tasks');
         logs = await fetchFromAPI('/logs');
+
+        console.log('Dados carregados:', { leads: leads.length, tasks: tasks.length, logs: logs.length });
 
         await loadAllLeadNotes();
         renderLeadsTable();
@@ -217,6 +223,8 @@ async function loadSampleData() {
         renderTasksList();
         renderLogsTimeline();
         renderRecentHistory();
+        
+        return Promise.resolve();
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
         showNotification('Erro ao carregar dados do servidor', 'error');
@@ -232,6 +240,8 @@ async function loadSampleData() {
         renderTasksList();
         renderLogsTimeline();
         renderRecentHistory();
+        
+        return Promise.resolve();
     }
 }
 
@@ -699,13 +709,15 @@ async function initializeCalendar() {
     // Configurar drag and drop para eventos pré-definidos
     setupCalendarDragDrop();
 
-    // Carregar atividades do banco
+    // Carregar atividades do banco com retry se necessário
     let activities = [];
     try {
         activities = await fetchFromAPI('/activities');
+        console.log('Atividades carregadas:', activities.length);
     } catch (error) {
         console.error('Erro ao carregar atividades:', error);
         activities = [];
+        showNotification('Erro ao carregar atividades da agenda', 'warning');
     }
 
     // Converter atividades para eventos do calendário
@@ -1486,15 +1498,34 @@ function openEventModal() {
     now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15); // Round to next 15 minutes
     document.getElementById('activityDateTime').value = now.toISOString().slice(0, 16);
 
-    // Populate leads dropdown
+    // Populate leads dropdown - sempre recarregar para ter dados atualizados
     const leadSelect = document.getElementById('activityLeadId');
-    leadSelect.innerHTML = '<option value="">Selecione um lead</option>';
-    leads.forEach(lead => {
-        const option = document.createElement('option');
-        option.value = lead.id;
-        option.textContent = `${lead.name} - ${lead.company}`;
-        leadSelect.appendChild(option);
-    });
+    leadSelect.innerHTML = '<option value="">Selecione um lead (opcional)</option>';
+    
+    // Verificar se existem leads carregados
+    if (leads && leads.length > 0) {
+        leads.forEach(lead => {
+            const option = document.createElement('option');
+            option.value = lead.id;
+            option.textContent = `${lead.name} - ${lead.company}`;
+            leadSelect.appendChild(option);
+        });
+    } else {
+        // Se não há leads, carregar do servidor
+        fetchFromAPI('/leads').then(serverLeads => {
+            if (serverLeads && serverLeads.length > 0) {
+                leads = serverLeads; // Atualizar array global
+                serverLeads.forEach(lead => {
+                    const option = document.createElement('option');
+                    option.value = lead.id;
+                    option.textContent = `${lead.name} - ${lead.company}`;
+                    leadSelect.appendChild(option);
+                });
+            }
+        }).catch(error => {
+            console.error('Erro ao carregar leads:', error);
+        });
+    }
 
     document.getElementById('activityModal').style.display = 'block';
 }
@@ -1803,11 +1834,12 @@ setInterval(() => {
 async function submitActivity() {
     const form = document.getElementById('activityForm');
     const formData = new FormData(form);
-    const leadId = parseInt(formData.get('leadId'));
+    const leadIdValue = formData.get('leadId');
+    const leadId = leadIdValue && leadIdValue !== '' ? parseInt(leadIdValue) : null;
     const lead = leadId ? leads.find(l => l.id === leadId) : null;
 
     const activityData = {
-        lead_id: leadId || null,
+        lead_id: leadId,
         type: formData.get('type'),
         title: formData.get('title'),
         description: formData.get('description'),
@@ -1999,7 +2031,30 @@ async function deleteLead(leadId) {
 
 function scheduleActivity(leadId) {
     const lead = leads.find(l => l.id === leadId);
-    if (!lead) return;
+    if (!lead) {
+        showNotification('Lead não encontrado', 'error');
+        return;
+    }
+
+    // Reset form and set lead ID
+    const form = document.getElementById('activityForm');
+    form.reset();
+    
+    // Set default date to current time
+    const now = new Date();
+    now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15);
+    document.getElementById('activityDateTime').value = now.toISOString().slice(0, 16);
+
+    // Populate leads dropdown
+    const leadSelect = document.getElementById('activityLeadId');
+    leadSelect.innerHTML = '<option value="">Selecione um lead (opcional)</option>';
+    leads.forEach(leadOption => {
+        const option = document.createElement('option');
+        option.value = leadOption.id;
+        option.textContent = `${leadOption.name} - ${leadOption.company}`;
+        option.selected = leadOption.id === leadId;
+        leadSelect.appendChild(option);
+    });
 
     // Set lead ID in activity modal
     document.getElementById('activityLeadId').value = leadId;
