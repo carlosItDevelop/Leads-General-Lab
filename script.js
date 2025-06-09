@@ -476,7 +476,7 @@ async function updateLeadStatus(leadId, newStatus) {
 
 // Tasks Management
 let currentTasksPage = 1;
-const tasksPerPage = 5;
+const tasksPerPage = 8;
 let currentTaskFilter = 'all';
 
 function renderTasksList() {
