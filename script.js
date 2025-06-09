@@ -521,17 +521,15 @@ function renderTasksList() {
                 </div>
             `).join('')}
         </div>
-        ${totalPages > 1 ? `
         <div class="tasks-pagination">
             <button class="btn btn-sm btn-secondary" ${currentTasksPage === 1 ? 'disabled' : ''} onclick="changeTasksPage(${currentTasksPage - 1})">
                 <i class="fas fa-chevron-left"></i> Anterior
             </button>
-            <span class="pagination-info">Página ${currentTasksPage} de ${totalPages}</span>
-            <button class="btn btn-sm btn-secondary" ${currentTasksPage === totalPages ? 'disabled' : ''} onclick="changeTasksPage(${currentTasksPage + 1})">
+            <span class="pagination-info">Página ${currentTasksPage} de ${totalPages || 1}</span>
+            <button class="btn btn-sm btn-secondary" ${currentTasksPage === totalPages || totalPages === 0 ? 'disabled' : ''} onclick="changeTasksPage(${currentTasksPage + 1})">
                 Próxima <i class="fas fa-chevron-right"></i>
             </button>
         </div>
-        ` : ''}
     `;
 }
 
