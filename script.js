@@ -133,6 +133,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Carregar dados primeiro, depois inicializar calendário
     loadSampleData().then(() => {
         initializeCalendar();
+        // Inicializar grid de arquivos
+        renderFilesGrid();
     });
 });
 
@@ -3087,6 +3089,181 @@ async function addTaskComment() {
         console.error('Erro ao adicionar comentário:', error);
         showNotification('Erro ao adicionar comentário', 'error');
     }
+}
+
+// Função para lidar com upload de arquivos
+async function handleFileUpload() {
+    const fileInput = document.getElementById('attachmentFile');
+    const files = fileInput.files;
+
+    if (!files || files.length === 0 || !currentTaskId) {
+        showNotification('Selecione pelo menos um arquivo', 'warning');
+        return;
+    }
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        try {
+            // Simular upload (em uma implementação real, você faria upload para um serviço de storage)
+            const fakeUrl = `https://example.com/uploads/${file.name}`;
+            
+            const attachmentData = {
+                filename: file.name,
+                file_url: fakeUrl,
+                file_size: file.size,
+                mime_type: file.type,
+                uploaded_by: 'Usuário Atual'
+            };
+
+            await fetchFromAPI(`/tasks/${currentTaskId}/attachments`, {
+                method: 'POST',
+                body: JSON.stringify(attachmentData)
+            });
+
+            showNotification(`Arquivo "${file.name}" adicionado com sucesso!`, 'success');
+        } catch (error) {
+            console.error('Erro ao fazer upload do arquivo:', error);
+            showNotification(`Erro ao fazer upload de "${file.name}"`, 'error');
+        }
+    }
+
+    // Limpar input e recarregar anexos
+    fileInput.value = '';
+    await loadTaskAttachments(currentTaskId);
+}
+
+// Função para abrir modal de upload de arquivos (para a aba Files)
+function openFileUploadModal() {
+    // Simular um modal de upload de arquivos
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '*/*';
+    
+    input.onchange = function(event) {
+        const files = event.target.files;
+        if (files && files.length > 0) {
+            // Simular processamento de arquivos para a aba Files
+            let filesList = [];
+            for (let i = 0; i < files.length; i++) {
+                filesList.push(files[i].name);
+            }
+            showNotification(`${files.length} arquivo(s) selecionado(s): ${filesList.join(', ')}`, 'info');
+            
+            // Em uma implementação real, você faria o upload aqui
+            setTimeout(() => {
+                showNotification('Upload simulado concluído! (Implementação completa requer serviço de storage)', 'success');
+                renderFilesGrid(); // Atualizar grid de arquivos
+            }, 2000);
+        }
+    };
+    
+    input.click();
+}
+
+// Função para filtrar arquivos na aba Files
+function filterFiles() {
+    const searchTerm = document.getElementById('filesSearch')?.value.toLowerCase() || '';
+    const typeFilter = document.getElementById('fileTypeFilter')?.value || '';
+    const taskFilter = document.getElementById('taskFilter')?.value || '';
+    
+    console.log('Filtrando arquivos:', { searchTerm, typeFilter, taskFilter });
+    showNotification('Filtros aplicados (função de demonstração)', 'info');
+}
+
+// Função para popular dropdown de tarefas na aba Files
+function populateTasksFilter() {
+    const taskFilter = document.getElementById('taskFilter');
+    if (!taskFilter || !tasks) return;
+
+    taskFilter.innerHTML = '<option value="">Todas as Tarefas</option>';
+    tasks.forEach(task => {
+        const option = document.createElement('option');
+        option.value = task.id;
+        option.textContent = task.title;
+        taskFilter.appendChild(option);
+    });
+}
+
+// Função para renderizar grid de arquivos
+function renderFilesGrid() {
+    const filesGrid = document.getElementById('filesGrid');
+    if (!filesGrid) return;
+
+    // Popular dropdown de tarefas quando renderizar os arquivos
+    populateTasksFilter();
+
+    // Simulação de arquivos para demonstração
+    const sampleFiles = [
+        {
+            id: 1,
+            name: 'proposta-tech-corp.pdf',
+            type: 'document',
+            size: '2.5 MB',
+            task: 'Preparar demonstração',
+            uploaded: '2024-01-15'
+        },
+        {
+            id: 2,
+            name: 'logo-empresa.png',
+            type: 'image',
+            size: '150 KB',
+            task: 'Follow-up com João Silva',
+            uploaded: '2024-01-14'
+        },
+        {
+            id: 3,
+            name: 'contrato-exemplo.docx',
+            type: 'document',
+            size: '1.2 MB',
+            task: null,
+            uploaded: '2024-01-13'
+        }
+    ];
+
+    filesGrid.innerHTML = sampleFiles.map(file => `
+        <div class="file-item">
+            <div class="file-icon">
+                <i class="fas fa-${getFileIcon(file.type)}"></i>
+            </div>
+            <div class="file-info">
+                <div class="file-name">${file.name}</div>
+                <div class="file-meta">
+                    <span class="file-size">${file.size}</span>
+                    ${file.task ? `<span class="file-task">• ${file.task}</span>` : ''}
+                    <span class="file-date">• ${file.uploaded}</span>
+                </div>
+            </div>
+            <div class="file-actions">
+                <button class="btn-icon" onclick="downloadFile('${file.name}')" title="Download">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="btn-icon" onclick="deleteFile(${file.id})" title="Excluir">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getFileIcon(type) {
+    const icons = {
+        document: 'file-alt',
+        image: 'image',
+        archive: 'file-archive',
+        other: 'file'
+    };
+    return icons[type] || 'file';
+}
+
+function downloadFile(filename) {
+    showNotification(`Download de "${filename}" iniciado (simulação)`, 'info');
+}
+
+function deleteFile(fileId) {
+    showNotification(`Arquivo ID ${fileId} removido (simulação)`, 'success');
+    renderFilesGrid();
 }
 
 async function deleteTaskWithConfirmation(taskId = null) {
