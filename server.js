@@ -111,8 +111,8 @@ app.get('/api/activities', async (req, res) => {
         const activities = await api.getActivities();
         res.json(activities);
     } catch (error) {
-        console.error('Erro ao buscar atividades:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        console.error('Erro ao buscar atividades:', error.message);
+        res.status(500).json({ error: 'Erro ao buscar atividades: ' + error.message });
     }
 });
 
@@ -121,8 +121,8 @@ app.post('/api/activities', async (req, res) => {
         const newActivity = await api.createActivity(req.body);
         res.status(201).json(newActivity);
     } catch (error) {
-        console.error('Erro ao criar atividade:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        console.error('Erro ao criar atividade:', error.message);
+        res.status(500).json({ error: 'Erro ao criar atividade: ' + error.message });
     }
 });
 
