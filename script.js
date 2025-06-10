@@ -135,6 +135,8 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeCalendar();
         // Inicializar grid de arquivos
         renderFilesGrid();
+        // Carregar ações importantes
+        loadImportantActions();
     });
 });
 
@@ -2600,6 +2602,209 @@ async function confirmDeleteEvent(event) {
     }
 }
 
+// Função para carregar ações importantes dinamicamente
+async function loadImportantActions() {
+    const actionsList = document.querySelector('.action-list');
+    if (!actionsList) return;
+
+    try {
+        const actions = await generateImportantActions();
+        
+        if (actions.length === 0) {
+            actionsList.innerHTML = `
+                <div class="no-actions">
+                    <div class="no-actions-content">
+                        <i class="fas fa-check-circle"></i>
+                        <h4>Tudo em dia!</h4>
+                        <p>Não há ações críticas pendentes no momento.</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        actionsList.innerHTML = actions.map(action => `
+            <div class="action-item ${action.urgency}" onclick="${action.onClick}">
+                <i class="fas fa-${action.icon}"></i>
+                <div class="action-content">
+                    <h4>${action.title}</h4>
+                    <p>${action.description}</p>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Erro ao carregar ações importantes:', error);
+        actionsList.innerHTML = `
+            <div class="action-item">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div class="action-content">
+                    <h4>Erro ao carregar ações</h4>
+                    <p>Não foi possível carregar as ações importantes.</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Função para gerar ações importantes baseadas nos dados reais
+async function generateImportantActions() {
+    const actions = [];
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // 1. Tarefas atrasadas (URGENTE)
+    const overdueTasks = tasks.filter(task => {
+        if (task.status === 'completed') return false;
+        const dueDate = new Date(task.due_date || task.dueDate);
+        return dueDate < today;
+    });
+
+    if (overdueTasks.length > 0) {
+        actions.push({
+            title: `${overdueTasks.length} tarefa${overdueTasks.length > 1 ? 's' : ''} atrasada${overdueTasks.length > 1 ? 's' : ''}`,
+            description: `Vencimento: ${overdueTasks[0].title}${overdueTasks.length > 1 ? ` e mais ${overdueTasks.length - 1}` : ''}`,
+            icon: 'exclamation-triangle',
+            urgency: 'urgent',
+            onClick: 'showTab("tasks"); filterTasks("overdue");'
+        });
+    }
+
+    // 2. Tarefas que vencem hoje (MÉDIO)
+    const todayTasks = tasks.filter(task => {
+        if (task.status === 'completed') return false;
+        const dueDate = new Date(task.due_date || task.dueDate);
+        return dueDate.toDateString() === today.toDateString();
+    });
+
+    if (todayTasks.length > 0) {
+        actions.push({
+            title: `${todayTasks.length} tarefa${todayTasks.length > 1 ? 's' : ''} vence${todayTasks.length > 1 ? 'm' : ''} hoje`,
+            description: `${todayTasks[0].title}${todayTasks.length > 1 ? ` e mais ${todayTasks.length - 1}` : ''}`,
+            icon: 'clock',
+            urgency: 'medium',
+            onClick: 'showTab("tasks");'
+        });
+    }
+
+    // 3. Leads quentes sem contato recente (URGENTE)
+    const hotLeadsNoContact = leads.filter(lead => {
+        if (lead.temperature !== 'quente') return false;
+        if (!lead.last_contact && !lead.lastContact) return true;
+        
+        const lastContact = new Date(lead.last_contact || lead.lastContact);
+        const daysSinceContact = Math.floor((today - lastContact) / (1000 * 60 * 60 * 24));
+        return daysSinceContact > 3; // Mais de 3 dias sem contato
+    });
+
+    if (hotLeadsNoContact.length > 0) {
+        actions.push({
+            title: `${hotLeadsNoContact.length} lead${hotLeadsNoContact.length > 1 ? 's' : ''} quente${hotLeadsNoContact.length > 1 ? 's' : ''} sem contato`,
+            description: `${hotLeadsNoContact[0].name}${hotLeadsNoContact.length > 1 ? ` e mais ${hotLeadsNoContact.length - 1}` : ''} precisam de atenção`,
+            icon: 'fire',
+            urgency: 'urgent',
+            onClick: 'showTab("kanban");'
+        });
+    }
+
+    // 4. Atividades do dia na agenda (NORMAL)
+    const todayActivities = await getTodayActivities();
+    if (todayActivities.length > 0) {
+        actions.push({
+            title: `${todayActivities.length} atividade${todayActivities.length > 1 ? 's' : ''} agendada${todayActivities.length > 1 ? 's' : ''} hoje`,
+            description: `Próxima: ${todayActivities[0].title}`,
+            icon: 'calendar-check',
+            urgency: '',
+            onClick: 'showTab("calendar");'
+        });
+    }
+
+    // 5. Leads novos não processados (MÉDIO)
+    const newLeads = leads.filter(lead => lead.status === 'novo');
+    if (newLeads.length > 0) {
+        actions.push({
+            title: `${newLeads.length} lead${newLeads.length > 1 ? 's' : ''} novo${newLeads.length > 1 ? 's' : ''} para processar`,
+            description: `${newLeads[0].name}${newLeads.length > 1 ? ` e mais ${newLeads.length - 1}` : ''} aguardando primeiro contato`,
+            icon: 'user-plus',
+            urgency: 'medium',
+            onClick: 'showTab("kanban");'
+        });
+    }
+
+    // 6. Propostas pendentes há muito tempo (URGENTE)
+    const oldProposals = leads.filter(lead => {
+        if (lead.status !== 'proposta') return false;
+        if (!lead.last_contact && !lead.lastContact) return true;
+        
+        const lastContact = new Date(lead.last_contact || lead.lastContact);
+        const daysSinceContact = Math.floor((today - lastContact) / (1000 * 60 * 60 * 24));
+        return daysSinceContact > 7; // Mais de 7 dias sem movimento
+    });
+
+    if (oldProposals.length > 0) {
+        actions.push({
+            title: `${oldProposals.length} proposta${oldProposals.length > 1 ? 's' : ''} sem follow-up`,
+            description: `${oldProposals[0].name}${oldProposals.length > 1 ? ` e mais ${oldProposals.length - 1}` : ''} há mais de 7 dias`,
+            icon: 'file-contract',
+            urgency: 'urgent',
+            onClick: 'showTab("kanban");'
+        });
+    }
+
+    // Se não há ações críticas, adicionar ações de exemplo/sugestões
+    if (actions.length === 0) {
+        actions.push(
+            {
+                title: 'Revisar pipeline de vendas',
+                description: 'Analisar leads em negociação e identificar oportunidades',
+                icon: 'chart-line',
+                urgency: '',
+                onClick: 'showTab("kanban");'
+            },
+            {
+                title: 'Follow-up semanal',
+                description: 'Entrar em contato com leads qualificados da semana passada',
+                icon: 'phone',
+                urgency: '',
+                onClick: 'showTab("leads-list");'
+            },
+            {
+                title: 'Agendar apresentações',
+                description: 'Marcar demonstrações para leads interessados',
+                icon: 'presentation',
+                urgency: '',
+                onClick: 'showTab("calendar");'
+            },
+            {
+                title: 'Atualizar propostas',
+                description: 'Revisar e personalizar propostas comerciais pendentes',
+                icon: 'edit',
+                urgency: '',
+                onClick: 'showTab("tasks");'
+            }
+        );
+    }
+
+    return actions.slice(0, 6); // Máximo 6 ações
+}
+
+// Função auxiliar para buscar atividades do dia
+async function getTodayActivities() {
+    try {
+        const activities = await fetchFromAPI('/activities');
+        const today = new Date().toISOString().split('T')[0];
+        
+        return activities.filter(activity => {
+            const activityDate = new Date(activity.scheduled_date).toISOString().split('T')[0];
+            return activityDate === today;
+        });
+    } catch (error) {
+        console.error('Erro ao buscar atividades do dia:', error);
+        return [];
+    }
+}
+
 // Export functions for global access
 window.toggleTheme = toggleTheme;
 window.openLeadModal = openLeadModal;
@@ -2634,6 +2839,7 @@ window.deleteTaskWithConfirmation = deleteTaskWithConfirmation;
 window.updateProgressDisplay = updateProgressDisplay;
 window.editTaskInline = editTaskInline;
 window.openTaskEditModal = openTaskEditModal;
+window.loadImportantActions = loadImportantActions;
 
 // Lead Notes Management
 async function loadAllLeadNotes() {
