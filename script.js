@@ -167,10 +167,10 @@ function setupEventListeners() {
 
     // Task filters
     document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', (e) => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-            await filterTasks(e.target.getAttribute('data-filter'));
+            filterTasks(e.target.getAttribute('data-filter'));
         });
     });
 
@@ -222,7 +222,7 @@ async function loadSampleData() {
         await loadAllLeadNotes();
         renderLeadsTable();
         renderKanbanBoard();
-        await renderTasksList();
+        renderTasksList();
         renderLogsTimeline();
         renderRecentHistory();
 
@@ -239,7 +239,7 @@ async function loadSampleData() {
         await loadAllLeadNotes();
         renderLeadsTable();
         renderKanbanBoard();
-        await renderTasksList();
+        renderTasksList();
         renderLogsTimeline();
         renderRecentHistory();
 
@@ -511,7 +511,7 @@ let sortDirection = 'asc';
 let advancedFilters = {};
 let currentTaskId = null;
 
-async function renderTasksList() {
+function renderTasksList() {
     const tasksList = document.getElementById('tasksList');
     if (!tasksList) return;
 
@@ -801,10 +801,10 @@ function openTaskDetails(taskId) {
     });
 }
 
-async function filterTasks(filter) {
+function filterTasks(filter) {
     currentTaskFilter = filter;
     currentTasksPage = 1; // Reset to first page when filtering
-    await renderTasksList();
+    renderTasksList();
 }
 
 function changeTasksPage(page) {
@@ -868,8 +868,7 @@ function getTemplateColor(eventType) {
         'qualificado': '#10b981',
         'proposta': '#8b5cf6',
         'negociacao': '#ef4444'
-    };    ```python
-return colors[eventType] || '#3b82f6';
+    };    return colors[eventType] || '#3b82f6';
 }
 
 async function initializeCalendar() {
@@ -1829,8 +1828,7 @@ async function submitLead() {
         email: formData.get('email'),
         phone: formData.get('phone'),
         position: formData.get('position'),
-        source: formData.get('```python
-source'),
+        source: formData.get('source'),
         status: formData.get('status') || 'novo',
         responsible: 'Usuário Atual',
         score: 50,
@@ -2467,7 +2465,7 @@ async function submitTask() {
         }
 
         // Re-render tasks list
-        await renderTasksList();
+        renderTasksList();
 
         closeModal('taskModal');
         form.reset();
@@ -3077,7 +3075,7 @@ async function updateTaskProgress(progress) {
             task.progress = parseInt(progress);
         }
 
-        await renderTasksList();
+        renderTasksList();
         showNotification('Progresso atualizado!', 'success');
     } catch (error) {
         console.error('Erro ao atualizar progresso:', error);
@@ -3123,11 +3121,11 @@ async function handleFileUpload() {
 
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-
+        
         try {
             // Simular upload (em uma implementação real, você faria upload para um serviço de storage)
             const fakeUrl = `https://example.com/uploads/${file.name}`;
-
+            
             const attachmentData = {
                 filename: file.name,
                 file_url: fakeUrl,
@@ -3151,7 +3149,7 @@ async function handleFileUpload() {
     // Limpar input e recarregar anexos
     fileInput.value = '';
     await loadTaskAttachments(currentTaskId);
-
+    
     // Recarregar grid de arquivos se estivermos na aba Files
     const currentTab = document.querySelector('.tab-content.active');
     if (currentTab && currentTab.id === 'files') {
@@ -3166,7 +3164,7 @@ function openFileUploadModal() {
     input.type = 'file';
     input.multiple = true;
     input.accept = '*/*';
-
+    
     input.onchange = function(event) {
         const files = event.target.files;
         if (files && files.length > 0) {
@@ -3176,7 +3174,7 @@ function openFileUploadModal() {
                 filesList.push(files[i].name);
             }
             showNotification(`${files.length} arquivo(s) selecionado(s): ${filesList.join(', ')}`, 'info');
-
+            
             // Em uma implementação real, você faria o upload aqui
             setTimeout(() => {
                 showNotification('Upload simulado concluído! (Implementação completa requer serviço de storage)', 'success');
@@ -3184,7 +3182,7 @@ function openFileUploadModal() {
             }, 2000);
         }
     };
-
+    
     input.click();
 }
 
@@ -3193,21 +3191,21 @@ async function filterFiles() {
     const searchTerm = document.getElementById('filesSearch')?.value.toLowerCase() || '';
     const typeFilter = document.getElementById('fileTypeFilter')?.value || '';
     const taskFilter = document.getElementById('taskFilter')?.value || '';
-
+    
     try {
         const attachments = await fetchFromAPI('/attachments');
-
+        
         let filteredFiles = attachments.filter(file => {
             // Filtro de busca por nome
             const matchesSearch = !searchTerm || file.filename.toLowerCase().includes(searchTerm);
-
+            
             // Filtro por tipo
             const fileType = getFileTypeFromMime(file.mime_type);
             const matchesType = !typeFilter || fileType === typeFilter;
-
+            
             // Filtro por tarefa
             const matchesTask = !taskFilter || file.task_id == taskFilter;
-
+            
             return matchesSearch && matchesType && matchesTask;
         });
 
@@ -3254,7 +3252,7 @@ async function filterFiles() {
                 </div>
             `;
         }).join('');
-
+        
         if (searchTerm || typeFilter || taskFilter) {
             showNotification(`${filteredFiles.length} arquivo(s) encontrado(s)`, 'info');
         }
@@ -3290,7 +3288,7 @@ async function renderFilesGrid() {
     try {
         // Buscar arquivos reais do banco de dados
         const attachments = await fetchFromAPI('/attachments');
-
+        
         if (attachments.length === 0) {
             filesGrid.innerHTML = `
                 <div class="files-empty">
@@ -3363,7 +3361,7 @@ function getFileIcon(type) {
 
 function getFileTypeFromMime(mimeType) {
     if (!mimeType) return 'other';
-
+    
     if (mimeType.startsWith('image/')) return 'image';
     if (mimeType.startsWith('video/')) return 'video';
     if (mimeType.startsWith('audio/')) return 'audio';
@@ -3373,7 +3371,7 @@ function getFileTypeFromMime(mimeType) {
     if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'powerpoint';
     if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('archive')) return 'archive';
     if (mimeType.startsWith('text/') || mimeType.includes('document')) return 'document';
-
+    
     return 'other';
 }
 
@@ -3400,7 +3398,7 @@ async function deleteFileFromGrid(fileId) {
             await fetchFromAPI(`/attachments/${fileId}`, {
                 method: 'DELETE'
             });
-
+            
             showNotification('Arquivo excluído com sucesso!', 'success');
             renderFilesGrid(); // Recarregar grid de arquivos
         } catch (error) {
@@ -3451,11 +3449,11 @@ async function deleteTaskWithConfirmation(taskId = null) {
 
         if (taskId) {
             // Called from task list
-            await renderTasksList();
+            renderTasksList();
         } else {
             // Called from modal
             closeModal('taskDetailsModal');
-            await renderTasksList();
+            renderTasksList();
         }
 
         showNotification('Tarefa excluída com sucesso!', 'success');
