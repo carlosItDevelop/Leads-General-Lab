@@ -137,6 +137,8 @@ document.addEventListener('DOMContentLoaded', function() {
         renderFilesGrid();
         // Carregar ações importantes
         loadImportantActions();
+        // Popular filtros de relatórios
+        populateVendedoresFilter();
     });
 });
 
@@ -2805,6 +2807,899 @@ async function getTodayActivities() {
     }
 }
 
+// Relatórios Customizáveis - Sistema Completo
+let reportData = {};
+let reportFilters = {};
+let currentReportType = 'sales_performance';
+
+// Função para gerar relatórios customizáveis
+async function generateCustomReport() {
+    const reportType = document.getElementById('reportType').value;
+    const startDate = document.getElementById('reportStartDate').value;
+    const endDate = document.getElementById('reportEndDate').value;
+    const vendedor = document.getElementById('reportVendedor').value;
+    
+    try {
+        showNotification('Gerando relatório...', 'info');
+        
+        reportFilters = {
+            type: reportType,
+            startDate,
+            endDate,
+            vendedor
+        };
+        
+        currentReportType = reportType;
+        
+        switch(reportType) {
+            case 'sales_performance':
+                await generateSalesPerformanceReport();
+                break;
+            case 'pipeline_time':
+                await generatePipelineTimeReport();
+                break;
+            case 'vendor_analysis':
+                await generateVendorAnalysisReport();
+                break;
+            case 'conversion_funnel':
+                await generateConversionFunnelReport();
+                break;
+            case 'lead_source':
+                await generateLeadSourceReport();
+                break;
+            case 'activity_summary':
+                await generateActivitySummaryReport();
+                break;
+            default:
+                await generateSalesPerformanceReport();
+        }
+        
+        // Mostrar seção de resultados
+        document.getElementById('reportResults').style.display = 'block';
+        document.getElementById('exportActions').style.display = 'block';
+        
+        showNotification('Relatório gerado com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao gerar relatório:', error);
+        showNotification('Erro ao gerar relatório', 'error');
+    }
+}
+
+// Relatório de Performance de Vendas
+async function generateSalesPerformanceReport() {
+    const filteredLeads = filterLeadsByDateAndVendor();
+    const filteredTasks = filterTasksByDateAndVendor();
+    
+    const salesData = analyzeSalesPerformance(filteredLeads, filteredTasks);
+    
+    reportData = {
+        type: 'sales_performance',
+        title: 'Relatório de Performance de Vendas',
+        data: salesData,
+        charts: ['salesByVendor', 'conversionRates', 'revenueTimeline']
+    };
+    
+    renderReportResults();
+    updateReportCharts();
+}
+
+// Relatório de Tempo no Pipeline
+async function generatePipelineTimeReport() {
+    const filteredLeads = filterLeadsByDateAndVendor();
+    
+    const pipelineData = analyzePipelineTime(filteredLeads);
+    
+    reportData = {
+        type: 'pipeline_time',
+        title: 'Análise de Tempo no Pipeline',
+        data: pipelineData,
+        charts: ['pipelineTimeByStage', 'averageTimeComparison']
+    };
+    
+    renderReportResults();
+    updateReportCharts();
+}
+
+// Relatório de Análise por Vendedor
+async function generateVendorAnalysisReport() {
+    const filteredLeads = filterLeadsByDateAndVendor();
+    const filteredTasks = filterTasksByDateAndVendor();
+    const filteredLogs = filterLogsByDateAndVendor();
+    
+    const vendorData = analyzeVendorPerformance(filteredLeads, filteredTasks, filteredLogs);
+    
+    reportData = {
+        type: 'vendor_analysis',
+        title: 'Análise Detalhada por Vendedor',
+        data: vendorData,
+        charts: ['vendorComparison', 'activityByVendor', 'vendorConversion']
+    };
+    
+    renderReportResults();
+    updateReportCharts();
+}
+
+// Relatório de Funil de Conversão
+async function generateConversionFunnelReport() {
+    const filteredLeads = filterLeadsByDateAndVendor();
+    
+    const funnelData = analyzeConversionFunnel(filteredLeads);
+    
+    reportData = {
+        type: 'conversion_funnel',
+        title: 'Análise do Funil de Conversão',
+        data: funnelData,
+        charts: ['conversionFunnel', 'dropoffAnalysis']
+    };
+    
+    renderReportResults();
+    updateReportCharts();
+}
+
+// Relatório de Origem de Leads
+async function generateLeadSourceReport() {
+    const filteredLeads = filterLeadsByDateAndVendor();
+    
+    const sourceData = analyzeLeadSources(filteredLeads);
+    
+    reportData = {
+        type: 'lead_source',
+        title: 'Análise de Origem de Leads',
+        data: sourceData,
+        charts: ['sourceDistribution', 'sourceConversion', 'sourceRevenue']
+    };
+    
+    renderReportResults();
+    updateReportCharts();
+}
+
+// Relatório de Resumo de Atividades
+async function generateActivitySummaryReport() {
+    const filteredTasks = filterTasksByDateAndVendor();
+    const filteredLogs = filterLogsByDateAndVendor();
+    
+    const activityData = analyzeActivitySummary(filteredTasks, filteredLogs);
+    
+    reportData = {
+        type: 'activity_summary',
+        title: 'Resumo de Atividades',
+        data: activityData,
+        charts: ['activityVolume', 'taskCompletion', 'activityTypes']
+    };
+    
+    renderReportResults();
+    updateReportCharts();
+}
+
+// Funções de análise de dados
+function analyzeSalesPerformance(leads, tasks) {
+    const vendors = [...new Set(leads.map(l => l.responsible))];
+    const analysis = {};
+    
+    vendors.forEach(vendor => {
+        const vendorLeads = leads.filter(l => l.responsible === vendor);
+        const vendorTasks = tasks.filter(t => t.assignee === vendor);
+        
+        const totalLeads = vendorLeads.length;
+        const convertedLeads = vendorLeads.filter(l => l.status === 'ganho').length;
+        const totalRevenue = vendorLeads.filter(l => l.status === 'ganho').reduce((sum, l) => sum + (l.value || 0), 0);
+        const completedTasks = vendorTasks.filter(t => t.status === 'completed').length;
+        
+        analysis[vendor] = {
+            totalLeads,
+            convertedLeads,
+            conversionRate: totalLeads > 0 ? (convertedLeads / totalLeads * 100).toFixed(1) : 0,
+            totalRevenue,
+            averageTicket: convertedLeads > 0 ? (totalRevenue / convertedLeads).toFixed(2) : 0,
+            completedTasks,
+            taskCompletionRate: vendorTasks.length > 0 ? (completedTasks / vendorTasks.length * 100).toFixed(1) : 0
+        };
+    });
+    
+    return analysis;
+}
+
+function analyzePipelineTime(leads) {
+    const stages = ['novo', 'contato', 'qualificado', 'proposta', 'negociacao', 'ganho'];
+    const analysis = {};
+    
+    stages.forEach(stage => {
+        const stageLeads = leads.filter(l => l.status === stage);
+        const avgDaysInStage = stageLeads.length > 0 ? 
+            stageLeads.reduce((sum, lead) => {
+                const daysSinceContact = lead.last_contact ? 
+                    Math.floor((new Date() - new Date(lead.last_contact)) / (1000 * 60 * 60 * 24)) : 0;
+                return sum + daysSinceContact;
+            }, 0) / stageLeads.length : 0;
+        
+        analysis[stage] = {
+            count: stageLeads.length,
+            averageDays: Math.round(avgDaysInStage),
+            percentage: leads.length > 0 ? (stageLeads.length / leads.length * 100).toFixed(1) : 0
+        };
+    });
+    
+    return analysis;
+}
+
+function analyzeVendorPerformance(leads, tasks, logs) {
+    const vendors = [...new Set(leads.map(l => l.responsible))];
+    const analysis = {};
+    
+    vendors.forEach(vendor => {
+        const vendorLeads = leads.filter(l => l.responsible === vendor);
+        const vendorTasks = tasks.filter(t => t.assignee === vendor);
+        const vendorLogs = logs.filter(l => l.user_id === vendor);
+        
+        analysis[vendor] = {
+            leads: {
+                total: vendorLeads.length,
+                converted: vendorLeads.filter(l => l.status === 'ganho').length,
+                lost: vendorLeads.filter(l => l.status === 'perdido').length,
+                active: vendorLeads.filter(l => !['ganho', 'perdido'].includes(l.status)).length
+            },
+            tasks: {
+                total: vendorTasks.length,
+                completed: vendorTasks.filter(t => t.status === 'completed').length,
+                overdue: vendorTasks.filter(t => {
+                    const dueDate = new Date(t.due_date || t.dueDate);
+                    return t.status === 'pending' && dueDate < new Date();
+                }).length
+            },
+            activities: {
+                total: vendorLogs.length,
+                calls: vendorLogs.filter(l => l.type === 'call').length,
+                meetings: vendorLogs.filter(l => l.type === 'meeting').length,
+                emails: vendorLogs.filter(l => l.type === 'email').length
+            },
+            revenue: vendorLeads.filter(l => l.status === 'ganho').reduce((sum, l) => sum + (l.value || 0), 0)
+        };
+    });
+    
+    return analysis;
+}
+
+function analyzeConversionFunnel(leads) {
+    const stages = ['novo', 'contato', 'qualificado', 'proposta', 'negociacao', 'ganho'];
+    const funnel = {};
+    
+    stages.forEach((stage, index) => {
+        const stageCount = leads.filter(l => l.status === stage).length;
+        const previousStageCount = index > 0 ? 
+            leads.filter(l => stages.indexOf(l.status) >= index - 1).length : leads.length;
+        
+        funnel[stage] = {
+            count: stageCount,
+            conversionRate: previousStageCount > 0 ? (stageCount / previousStageCount * 100).toFixed(1) : 0,
+            dropoffRate: previousStageCount > 0 ? ((previousStageCount - stageCount) / previousStageCount * 100).toFixed(1) : 0
+        };
+    });
+    
+    return funnel;
+}
+
+function analyzeLeadSources(leads) {
+    const sources = [...new Set(leads.map(l => l.source))];
+    const analysis = {};
+    
+    sources.forEach(source => {
+        const sourceLeads = leads.filter(l => l.source === source);
+        const convertedLeads = sourceLeads.filter(l => l.status === 'ganho');
+        
+        analysis[source] = {
+            total: sourceLeads.length,
+            converted: convertedLeads.length,
+            conversionRate: sourceLeads.length > 0 ? (convertedLeads.length / sourceLeads.length * 100).toFixed(1) : 0,
+            revenue: convertedLeads.reduce((sum, l) => sum + (l.value || 0), 0),
+            averageValue: convertedLeads.length > 0 ? 
+                (convertedLeads.reduce((sum, l) => sum + (l.value || 0), 0) / convertedLeads.length).toFixed(2) : 0
+        };
+    });
+    
+    return analysis;
+}
+
+function analyzeActivitySummary(tasks, logs) {
+    const today = new Date();
+    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    const analysis = {
+        tasks: {
+            total: tasks.length,
+            completed: tasks.filter(t => t.status === 'completed').length,
+            overdue: tasks.filter(t => {
+                const dueDate = new Date(t.due_date || t.dueDate);
+                return t.status === 'pending' && dueDate < today;
+            }).length,
+            thisWeek: tasks.filter(t => new Date(t.created_at) >= lastWeek).length,
+            thisMonth: tasks.filter(t => new Date(t.created_at) >= lastMonth).length
+        },
+        activities: {
+            total: logs.length,
+            thisWeek: logs.filter(l => new Date(l.timestamp) >= lastWeek).length,
+            thisMonth: logs.filter(l => new Date(l.timestamp) >= lastMonth).length,
+            byType: {}
+        }
+    };
+    
+    // Análise por tipo de atividade
+    const activityTypes = [...new Set(logs.map(l => l.type))];
+    activityTypes.forEach(type => {
+        analysis.activities.byType[type] = logs.filter(l => l.type === type).length;
+    });
+    
+    return analysis;
+}
+
+// Funções de filtro
+function filterLeadsByDateAndVendor() {
+    let filtered = [...leads];
+    
+    if (reportFilters.startDate) {
+        filtered = filtered.filter(l => 
+            new Date(l.last_contact || l.created_at) >= new Date(reportFilters.startDate));
+    }
+    
+    if (reportFilters.endDate) {
+        filtered = filtered.filter(l => 
+            new Date(l.last_contact || l.created_at) <= new Date(reportFilters.endDate));
+    }
+    
+    if (reportFilters.vendedor && reportFilters.vendedor !== '') {
+        filtered = filtered.filter(l => l.responsible === reportFilters.vendedor);
+    }
+    
+    return filtered;
+}
+
+function filterTasksByDateAndVendor() {
+    let filtered = [...tasks];
+    
+    if (reportFilters.startDate) {
+        filtered = filtered.filter(t => 
+            new Date(t.created_at) >= new Date(reportFilters.startDate));
+    }
+    
+    if (reportFilters.endDate) {
+        filtered = filtered.filter(t => 
+            new Date(t.created_at) <= new Date(reportFilters.endDate));
+    }
+    
+    if (reportFilters.vendedor && reportFilters.vendedor !== '') {
+        filtered = filtered.filter(t => t.assignee === reportFilters.vendedor);
+    }
+    
+    return filtered;
+}
+
+function filterLogsByDateAndVendor() {
+    let filtered = [...logs];
+    
+    if (reportFilters.startDate) {
+        filtered = filtered.filter(l => 
+            new Date(l.timestamp) >= new Date(reportFilters.startDate));
+    }
+    
+    if (reportFilters.endDate) {
+        filtered = filtered.filter(l => 
+            new Date(l.timestamp) <= new Date(reportFilters.endDate));
+    }
+    
+    if (reportFilters.vendedor && reportFilters.vendedor !== '') {
+        filtered = filtered.filter(l => l.user_id === reportFilters.vendedor);
+    }
+    
+    return filtered;
+}
+
+// Renderização dos resultados
+function renderReportResults() {
+    const resultsContainer = document.getElementById('reportContent');
+    
+    let html = `
+        <div class="report-header">
+            <h2>${reportData.title}</h2>
+            <div class="report-meta">
+                <span><i class="fas fa-calendar"></i> Período: ${reportFilters.startDate || 'Início'} - ${reportFilters.endDate || 'Atual'}</span>
+                ${reportFilters.vendedor ? `<span><i class="fas fa-user"></i> Vendedor: ${reportFilters.vendedor}</span>` : ''}
+                <span><i class="fas fa-clock"></i> Gerado em: ${new Date().toLocaleString('pt-BR')}</span>
+            </div>
+        </div>
+        
+        <div class="report-summary">
+            ${renderReportSummary()}
+        </div>
+        
+        <div class="report-charts">
+            ${renderReportChartsContainer()}
+        </div>
+        
+        <div class="report-tables">
+            ${renderReportTables()}
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+}
+
+function renderReportSummary() {
+    switch(currentReportType) {
+        case 'sales_performance':
+            return renderSalesPerformanceSummary();
+        case 'pipeline_time':
+            return renderPipelineTimeSummary();
+        case 'vendor_analysis':
+            return renderVendorAnalysisSummary();
+        case 'conversion_funnel':
+            return renderConversionFunnelSummary();
+        case 'lead_source':
+            return renderLeadSourceSummary();
+        case 'activity_summary':
+            return renderActivitySummaryContent();
+        default:
+            return '<p>Resumo não disponível</p>';
+    }
+}
+
+function renderSalesPerformanceSummary() {
+    const totalRevenue = Object.values(reportData.data).reduce((sum, vendor) => sum + vendor.totalRevenue, 0);
+    const totalLeads = Object.values(reportData.data).reduce((sum, vendor) => sum + vendor.totalLeads, 0);
+    const totalConverted = Object.values(reportData.data).reduce((sum, vendor) => sum + vendor.convertedLeads, 0);
+    const avgConversion = totalLeads > 0 ? (totalConverted / totalLeads * 100).toFixed(1) : 0;
+    
+    return `
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>Receita Total</h3>
+                <div class="summary-value">R$ ${formatCurrency(totalRevenue)}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Total de Leads</h3>
+                <div class="summary-value">${totalLeads}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Leads Convertidos</h3>
+                <div class="summary-value">${totalConverted}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Taxa de Conversão</h3>
+                <div class="summary-value">${avgConversion}%</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderPipelineTimeSummary() {
+    const totalLeads = Object.values(reportData.data).reduce((sum, stage) => sum + stage.count, 0);
+    const avgTime = Object.values(reportData.data).reduce((sum, stage) => sum + stage.averageDays, 0) / Object.keys(reportData.data).length;
+    
+    return `
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>Total de Leads</h3>
+                <div class="summary-value">${totalLeads}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Tempo Médio no Pipeline</h3>
+                <div class="summary-value">${Math.round(avgTime)} dias</div>
+            </div>
+            <div class="summary-card">
+                <h3>Estágio com Mais Leads</h3>
+                <div class="summary-value">${Object.entries(reportData.data).sort((a, b) => b[1].count - a[1].count)[0][0]}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Estágio Mais Demorado</h3>
+                <div class="summary-value">${Object.entries(reportData.data).sort((a, b) => b[1].averageDays - a[1].averageDays)[0][0]}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderVendorAnalysisSummary() {
+    const vendors = Object.keys(reportData.data);
+    const topVendor = vendors.sort((a, b) => reportData.data[b].revenue - reportData.data[a].revenue)[0];
+    const totalRevenue = vendors.reduce((sum, v) => sum + reportData.data[v].revenue, 0);
+    
+    return `
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>Total de Vendedores</h3>
+                <div class="summary-value">${vendors.length}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Top Vendedor</h3>
+                <div class="summary-value">${topVendor || 'N/A'}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Receita Total</h3>
+                <div class="summary-value">R$ ${formatCurrency(totalRevenue)}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Média por Vendedor</h3>
+                <div class="summary-value">R$ ${vendors.length > 0 ? formatCurrency(totalRevenue / vendors.length) : 0}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderConversionFunnelSummary() {
+    const stages = Object.keys(reportData.data);
+    const totalLeads = Object.values(reportData.data).reduce((sum, stage) => sum + stage.count, 0);
+    const finalConversion = reportData.data['ganho'] ? reportData.data['ganho'].conversionRate : 0;
+    
+    return `
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>Total de Leads</h3>
+                <div class="summary-value">${totalLeads}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Conversão Final</h3>
+                <div class="summary-value">${finalConversion}%</div>
+            </div>
+            <div class="summary-card">
+                <h3>Estágios do Funil</h3>
+                <div class="summary-value">${stages.length}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Maior Drop-off</h3>
+                <div class="summary-value">${Object.entries(reportData.data).sort((a, b) => b[1].dropoffRate - a[1].dropoffRate)[0][0]}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderLeadSourceSummary() {
+    const sources = Object.keys(reportData.data);
+    const totalLeads = Object.values(reportData.data).reduce((sum, source) => sum + source.total, 0);
+    const bestSource = sources.sort((a, b) => reportData.data[b].conversionRate - reportData.data[a].conversionRate)[0];
+    
+    return `
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>Fontes de Lead</h3>
+                <div class="summary-value">${sources.length}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Total de Leads</h3>
+                <div class="summary-value">${totalLeads}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Melhor Fonte</h3>
+                <div class="summary-value">${bestSource || 'N/A'}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Taxa Conversão Média</h3>
+                <div class="summary-value">${sources.length > 0 ? (Object.values(reportData.data).reduce((sum, s) => sum + parseFloat(s.conversionRate), 0) / sources.length).toFixed(1) : 0}%</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderActivitySummaryContent() {
+    const data = reportData.data;
+    
+    return `
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>Total de Tarefas</h3>
+                <div class="summary-value">${data.tasks.total}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Tarefas Concluídas</h3>
+                <div class="summary-value">${data.tasks.completed}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Total de Atividades</h3>
+                <div class="summary-value">${data.activities.total}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Tarefas em Atraso</h3>
+                <div class="summary-value">${data.tasks.overdue}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderReportChartsContainer() {
+    return `
+        <div class="report-chart-container">
+            <canvas id="reportChart" width="800" height="400"></canvas>
+        </div>
+    `;
+}
+
+function renderReportTables() {
+    switch(currentReportType) {
+        case 'sales_performance':
+            return renderSalesPerformanceTable();
+        case 'vendor_analysis':
+            return renderVendorAnalysisTable();
+        case 'pipeline_time':
+            return renderPipelineTimeTable();
+        default:
+            return '';
+    }
+}
+
+function renderSalesPerformanceTable() {
+    const vendors = Object.keys(reportData.data);
+    
+    return `
+        <div class="report-table">
+            <h3>Detalhamento por Vendedor</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Vendedor</th>
+                        <th>Leads</th>
+                        <th>Convertidos</th>
+                        <th>Taxa Conversão</th>
+                        <th>Receita</th>
+                        <th>Ticket Médio</th>
+                        <th>Tarefas Concluídas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${vendors.map(vendor => {
+                        const data = reportData.data[vendor];
+                        return `
+                            <tr>
+                                <td>${vendor}</td>
+                                <td>${data.totalLeads}</td>
+                                <td>${data.convertedLeads}</td>
+                                <td>${data.conversionRate}%</td>
+                                <td>R$ ${formatCurrency(data.totalRevenue)}</td>
+                                <td>R$ ${data.averageTicket}</td>
+                                <td>${data.completedTasks}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderVendorAnalysisTable() {
+    const vendors = Object.keys(reportData.data);
+    
+    return `
+        <div class="report-table">
+            <h3>Análise Completa por Vendedor</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Vendedor</th>
+                        <th>Leads Ativos</th>
+                        <th>Leads Convertidos</th>
+                        <th>Leads Perdidos</th>
+                        <th>Tarefas Concluídas</th>
+                        <th>Tarefas em Atraso</th>
+                        <th>Atividades</th>
+                        <th>Receita</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${vendors.map(vendor => {
+                        const data = reportData.data[vendor];
+                        return `
+                            <tr>
+                                <td>${vendor}</td>
+                                <td>${data.leads.active}</td>
+                                <td>${data.leads.converted}</td>
+                                <td>${data.leads.lost}</td>
+                                <td>${data.tasks.completed}</td>
+                                <td>${data.tasks.overdue}</td>
+                                <td>${data.activities.total}</td>
+                                <td>R$ ${formatCurrency(data.revenue)}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderPipelineTimeTable() {
+    const stages = Object.keys(reportData.data);
+    
+    return `
+        <div class="report-table">
+            <h3>Tempo por Estágio do Pipeline</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Estágio</th>
+                        <th>Quantidade</th>
+                        <th>Tempo Médio (dias)</th>
+                        <th>Porcentagem do Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${stages.map(stage => {
+                        const data = reportData.data[stage];
+                        return `
+                            <tr>
+                                <td>${getStatusLabel(stage)}</td>
+                                <td>${data.count}</td>
+                                <td>${data.averageDays}</td>
+                                <td>${data.percentage}%</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+// Atualizar gráficos do relatório
+function updateReportCharts() {
+    // Esta função seria implementada com Chart.js ou similar
+    // Por enquanto, vamos simular
+    const canvas = document.getElementById('reportChart');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'var(--primary-color)';
+        ctx.fillRect(50, 50, 100, 100);
+        ctx.fillStyle = 'var(--text-primary)';
+        ctx.font = '16px Arial';
+        ctx.fillText('Gráfico do Relatório', 200, 100);
+        ctx.fillText(`Tipo: ${reportData.title}`, 200, 120);
+    }
+}
+
+// Exportar relatório para PDF
+async function exportToPDF() {
+    try {
+        // Simular geração de PDF
+        showNotification('Preparando arquivo PDF...', 'info');
+        
+        // Em uma implementação real, usaríamos jsPDF ou similar
+        const reportContent = document.getElementById('reportContent').innerHTML;
+        
+        // Simular download
+        setTimeout(() => {
+            const blob = new Blob([`
+                <html>
+                <head>
+                    <title>${reportData.title}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; }
+                        .summary-cards { display: flex; gap: 20px; margin: 20px 0; }
+                        .summary-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f5f5f5; }
+                    </style>
+                </head>
+                <body>
+                    ${reportContent}
+                </body>
+                </html>
+            `], { type: 'text/html' });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `relatorio_${currentReportType}_${new Date().toISOString().split('T')[0]}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification('Relatório exportado em PDF (simulação)!', 'success');
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Erro ao exportar PDF:', error);
+        showNotification('Erro ao exportar PDF', 'error');
+    }
+}
+
+// Exportar relatório para Excel
+async function exportToExcel() {
+    try {
+        showNotification('Preparando arquivo Excel...', 'info');
+        
+        // Simular geração de Excel
+        const csvContent = generateCSVContent();
+        
+        setTimeout(() => {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `relatorio_${currentReportType}_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification('Relatório exportado em Excel (CSV)!', 'success');
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Erro ao exportar Excel:', error);
+        showNotification('Erro ao exportar Excel', 'error');
+    }
+}
+
+function generateCSVContent() {
+    let csv = `${reportData.title}\n`;
+    csv += `Período: ${reportFilters.startDate || 'Início'} - ${reportFilters.endDate || 'Atual'}\n`;
+    csv += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n\n`;
+    
+    switch(currentReportType) {
+        case 'sales_performance':
+            csv += 'Vendedor,Leads,Convertidos,Taxa Conversão,Receita,Ticket Médio\n';
+            Object.entries(reportData.data).forEach(([vendor, data]) => {
+                csv += `${vendor},${data.totalLeads},${data.convertedLeads},${data.conversionRate}%,R$ ${data.totalRevenue},R$ ${data.averageTicket}\n`;
+            });
+            break;
+        case 'pipeline_time':
+            csv += 'Estágio,Quantidade,Tempo Médio (dias),Porcentagem\n';
+            Object.entries(reportData.data).forEach(([stage, data]) => {
+                csv += `${getStatusLabel(stage)},${data.count},${data.averageDays},${data.percentage}%\n`;
+            });
+            break;
+        default:
+            csv += 'Dados não disponíveis para este tipo de relatório\n';
+    }
+    
+    return csv;
+}
+
+// Imprimir relatório
+function printReport() {
+    const printWindow = window.open('', '_blank');
+    const reportContent = document.getElementById('reportContent').innerHTML;
+    
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>${reportData.title}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .summary-cards { display: flex; gap: 20px; margin: 20px 0; }
+                .summary-card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; flex: 1; }
+                .summary-card h3 { margin: 0 0 10px 0; color: #333; }
+                .summary-value { font-size: 24px; font-weight: bold; color: #0066cc; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f5f5f5; }
+                .report-header h2 { color: #333; margin-bottom: 10px; }
+                .report-meta { color: #666; margin-bottom: 20px; }
+                .report-meta span { margin-right: 20px; }
+                @media print { body { margin: 0; } }
+            </style>
+        </head>
+        <body>
+            ${reportContent}
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Função para popular dropdown de vendedores nos filtros
+function populateVendedoresFilter() {
+    const vendedorSelect = document.getElementById('reportVendedor');
+    if (!vendedorSelect) return;
+    
+    vendedorSelect.innerHTML = '<option value="">Todos os Vendedores</option>';
+    
+    const vendedores = [...new Set(leads.map(l => l.responsible).filter(r => r))];
+    vendedores.forEach(vendedor => {
+        const option = document.createElement('option');
+        option.value = vendedor;
+        option.textContent = vendedor;
+        vendedorSelect.appendChild(option);
+    });
+}
+
 // Export functions for global access
 window.toggleTheme = toggleTheme;
 window.openLeadModal = openLeadModal;
@@ -2840,6 +3735,13 @@ window.updateProgressDisplay = updateProgressDisplay;
 window.editTaskInline = editTaskInline;
 window.openTaskEditModal = openTaskEditModal;
 window.loadImportantActions = loadImportantActions;
+
+// Relatórios Customizáveis - Export functions
+window.generateCustomReport = generateCustomReport;
+window.exportToPDF = exportToPDF;
+window.exportToExcel = exportToExcel;
+window.printReport = printReport;
+window.populateVendedoresFilter = populateVendedoresFilter;
 
 // Lead Notes Management
 async function loadAllLeadNotes() {
