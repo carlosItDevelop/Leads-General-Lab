@@ -1,4 +1,3 @@
-
 const { Pool } = require('pg');
 
 // Configuração do pool de conexões
@@ -19,22 +18,22 @@ const pool = new Pool({
 async function resetDatabase() {
     try {
         console.log('🗑️ Resetando banco de dados...');
-        
+
         // Drop all tables in correct order (respecting foreign keys)
         await pool.query(`DROP TABLE IF EXISTS activities CASCADE`);
         await pool.query(`DROP TABLE IF EXISTS tasks CASCADE`);
         await pool.query(`DROP TABLE IF EXISTS logs CASCADE`);
         await pool.query(`DROP TABLE IF EXISTS notes CASCADE`);
         await pool.query(`DROP TABLE IF EXISTS leads CASCADE`);
-        
+
         console.log('✅ Todas as tabelas foram removidas');
-        
+
         // Recreate all tables
         await createTables();
-        
+
         // Insert fresh sample data
         await insertSampleData();
-        
+
         console.log('🎉 Banco de dados resetado com sucesso!');
     } catch (error) {
         console.error('❌ Erro ao resetar banco de dados:', error);
@@ -45,7 +44,7 @@ async function resetDatabase() {
 // Função para criar todas as tabelas
 async function createTables() {
     console.log('📋 Criando tabelas...');
-    
+
     await pool.query(`
         CREATE TABLE IF NOT EXISTS leads (
             id SERIAL PRIMARY KEY,
@@ -145,7 +144,7 @@ async function createTables() {
         ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0,
         ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0
     `);
-    
+
     console.log('✅ Tabelas criadas com sucesso');
 }
 
@@ -153,25 +152,25 @@ async function createTables() {
 async function initializeDatabase() {
     try {
         console.log('Conectando ao banco de dados...');
-        
+
         // Testar conexão
         await pool.query('SELECT NOW()');
         console.log('Conexão com banco de dados estabelecida com sucesso!');
 
         // Verificar se precisa resetar (força reset para corrigir problemas)
         const shouldReset = process.env.FORCE_DB_RESET === 'true';
-        
+
         if (shouldReset) {
             await resetDatabase();
         } else {
             // Criar tabelas se não existirem
             await createTables();
-            
+
             // Executar migrações necessárias
             await runMigrations();
-            
+
             console.log('Banco de dados inicializado com sucesso!');
-            
+
             // Inserir dados de exemplo se não existirem
             await insertSampleData();
         }
@@ -250,7 +249,7 @@ async function insertSampleData() {
 
         for (const lead of sampleLeads) {
             await pool.query(`
-                INSERT INTO leads (name, company, email, phone, position, status, source, responsible, score, temperature, value, notes)
+                INSERT INTO leads (name, company, email, phone, position, source, status, responsible, score, temperature, value, notes)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             `, [lead.name, lead.company, lead.email, lead.phone, lead.position, lead.status, lead.source, lead.responsible, lead.score, lead.temperature, lead.value, lead.notes]);
         }
@@ -450,11 +449,11 @@ const api = {
 
     async updateTask(id, taskData) {
         const { title, description, due_date, priority, lead_id, assignee, progress } = taskData;
-        
+
         // Validar e limpar dados
         const cleanDueDate = due_date && due_date.trim() !== '' ? due_date : null;
         const cleanLeadId = lead_id && lead_id !== '' ? parseInt(lead_id) : null;
-        
+
         const result = await pool.query(`
             UPDATE tasks 
             SET title = $1, description = $2, due_date = $3, priority = $4, 
@@ -561,11 +560,11 @@ const api = {
 
     async deleteActivity(id) {
         const result = await pool.query('DELETE FROM activities WHERE id = $1 RETURNING *', [id]);
-        
+
         if (result.rows.length === 0) {
             throw new Error('Atividade não encontrada');
         }
-        
+
         return result.rows[0];
     },
 
@@ -674,17 +673,17 @@ const api = {
         // Verificar se a tarefa tem dependências
         const attachments = await this.getTaskAttachments(id);
         const comments = await this.getTaskComments(id);
-        
+
         if (attachments.length > 0 || comments.length > 0) {
             throw new Error(`Tarefa possui ${attachments.length} anexo(s) e ${comments.length} comentário(s). Remova-os primeiro.`);
         }
-        
+
         const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING *', [id]);
-        
+
         if (result.rows.length === 0) {
             throw new Error('Tarefa não encontrada');
         }
-        
+
         return result.rows[0];
     },
 
@@ -727,7 +726,29 @@ const api = {
 
         const result = await pool.query(query, params);
         return result.rows;
-    }
+    },
+
+    async getAllTasksWithCounts() {
+        const result = await pool.query(`
+            SELECT 
+                t.*,
+                COALESCE(attachment_count, 0) as attachment_count,
+                COALESCE(comment_count, 0) as comment_count
+            FROM tasks t
+            LEFT JOIN (
+                SELECT task_id, COUNT(*) as attachment_count
+                FROM task_attachments 
+                GROUP BY task_id
+            ) ta ON t.id = ta.task_id
+            LEFT JOIN (
+                SELECT task_id, COUNT(*) as comment_count
+                FROM task_comments 
+                GROUP BY task_id
+            ) tc ON t.id = tc.task_id
+            ORDER BY t.created_at DESC
+        `);
+        return result.rows;
+    },
 };
 
 module.exports = { initializeDatabase, resetDatabase, api, pool };

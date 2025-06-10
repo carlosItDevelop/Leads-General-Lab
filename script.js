@@ -599,6 +599,10 @@ function renderTaskItem(task) {
     const isOverdue = task.status === 'pending' && dueDate < today;
     const progress = task.progress || 0;
 
+    // Verificar se a tarefa tem anexos e comentários
+    const hasAttachments = task.attachment_count && task.attachment_count > 0;
+    const hasComments = task.comment_count && task.comment_count > 0;
+
     return `
         <div class="task-item" data-task-id="${task.id}" data-status="${task.status}" draggable="${currentTaskSort === 'order'}">
             <input type="checkbox" class="task-checkbox" ${task.status === 'completed' ? 'checked' : ''} 
@@ -608,6 +612,8 @@ function renderTaskItem(task) {
                     <div class="task-title" style="cursor: pointer; color: var(--primary-color);" onclick="openTaskDetailsModal(${task.id})">
                         ${task.title}
                         <span class="priority-badge ${task.priority}">${getPriorityLabel(task.priority)}</span>
+                        ${hasAttachments ? '<i class="fas fa-paperclip task-indicator attachment-indicator" title="Tem anexos"></i>' : ''}
+                        ${hasComments ? '<i class="fas fa-comment task-indicator comment-indicator" title="Tem comentários"></i>' : ''}
                     </div>
                     <div class="task-actions">
                         <button class="task-action-btn" onclick="openTaskDetailsModal(${task.id})" title="Ver detalhes">

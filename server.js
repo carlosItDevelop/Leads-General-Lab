@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -56,9 +55,10 @@ app.delete('/api/leads/:id', async (req, res) => {
     }
 });
 
+// Get all tasks
 app.get('/api/tasks', async (req, res) => {
     try {
-        const tasks = await api.getTasks();
+        const tasks = await api.getAllTasksWithCounts();
         res.json(tasks);
     } catch (error) {
         console.error('Erro ao buscar tarefas:', error);
@@ -82,7 +82,7 @@ app.put('/api/tasks/:id', async (req, res) => {
         res.json(updatedTask);
     } catch (error) {
         console.error('Erro ao atualizar tarefa:', error);
-        
+
         // Verificar se é erro de validação de data
         if (error.code === '22007') {
             res.status(400).json({ error: 'Data de vencimento inválida. Por favor, insira uma data válida.' });
