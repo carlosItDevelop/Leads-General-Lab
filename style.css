@@ -438,6 +438,57 @@ body {
   }
 }
 
+/* Estados de urgência para ações importantes */
+.action-item.urgent {
+  border-left-color: var(--danger-color);
+  background: linear-gradient(135deg, var(--bg-secondary), rgba(239, 68, 68, 0.05));
+}
+
+.action-item.urgent i {
+  color: var(--danger-color);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.action-item.medium {
+  border-left-color: var(--warning-color);
+}
+
+.action-item.medium i {
+  color: var(--warning-color);
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+/* Estado quando não há ações importantes */
+.no-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.no-actions-content {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.no-actions-content i {
+  font-size: 48px;
+  color: var(--success-color);
+  margin-bottom: 16px;
+  display: block;
+}
+
+.no-actions-content h4 {
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.no-actions-content p {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
 /* Filters */
 .filters {
   display: flex;
