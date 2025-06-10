@@ -1,2 +1,1065 @@
-Análise: The code changes involve replacing the original reports tab content with a more comprehensive and customizable reporting system, including various filters, export options, predefined reports, and classic charts.
-```
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>General Lab Solutions - CRM</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.44.0/dist/apexcharts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body data-theme="dark">
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>General Lab Solutions CRM</span>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Alternar tema">
+                    <i id="theme-icon" class="fas fa-sun"></i>
+                </button>
+                <div class="notification-bell">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-count">3</span>
+                </div>
+                <div class="user-menu">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Usuário</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+        <div class="nav-tabs-container">
+            <a href="#" class="nav-tab active" data-tab="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-tab" data-tab="leads-list">
+                <i class="fas fa-users"></i>
+                <span>Lista de Leads</span>
+            </a>
+            <a href="#" class="nav-tab" data-tab="kanban">
+                <i class="fas fa-columns"></i>
+                <span>Kanban</span>
+            </a>
+            <a href="#" class="nav-tab" data-tab="tasks">
+                <i class="fas fa-tasks"></i>
+                <span>Tarefas</span>
+            </a>
+            <a href="#" class="nav-tab" data-tab="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Calendário</span>
+            </a>
+            <a href="#" class="nav-tab" data-tab="reports">
+                <i class="fas fa-chart-bar"></i>
+                <span>Relatórios</span>
+            </a>
+            <a href="#" class="nav-tab" data-tab="files">
+                <i class="fas fa-folder"></i>
+                <span>Arquivos</span>
+            </a>
+            <a href="#" class="nav-tab" data-tab="logs">
+                <i class="fas fa-history"></i>
+                <span>Logs</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="section-header">
+                <h1>Dashboard</h1>
+                <button class="btn btn-primary" onclick="openLeadModal()">
+                    <i class="fas fa-plus"></i>
+                    Novo Lead
+                </button>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <h3>Total de Leads</h3>
+                        <div class="kpi-value">247</div>
+                        <div class="kpi-trend positive">
+                            <i class="fas fa-arrow-up"></i> +12% este mês
+                        </div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <h3>Leads Convertidos</h3>
+                        <div class="kpi-value">23</div>
+                        <div class="kpi-trend positive">
+                            <i class="fas fa-arrow-up"></i> +8% este mês
+                        </div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <h3>Receita Total</h3>
+                        <div class="kpi-value">R$ 485K</div>
+                        <div class="kpi-trend positive">
+                            <i class="fas fa-arrow-up"></i> +25% este mês
+                        </div>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <h3>Taxa de Conversão</h3>
+                        <div class="kpi-value">9.3%</div>
+                        <div class="kpi-trend negative">
+                            <i class="fas fa-arrow-down"></i> -2% este mês
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Funil de Vendas</h3>
+                    <div id="funnelChart"></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Origem dos Leads</h3>
+                    <div id="sourceChart"></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Vendas por Período</h3>
+                    <div id="salesChart"></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Taxa de Conversão por Vendedor</h3>
+                    <div id="conversionChart"></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Atividades por Período</h3>
+                    <div id="activityChart"></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Tempo Médio no Pipeline</h3>
+                    <div id="pipelineTimeChart"></div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <h3>Próximas Ações Importantes</h3>
+                <div class="action-list" id="importantActionsList">
+                    <!-- Dynamic content loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Leads List Tab -->
+        <div id="leads-list" class="tab-content">
+            <div class="section-header">
+                <h1>Lista de Leads</h1>
+                <button class="btn btn-primary" onclick="openLeadModal()">
+                    <i class="fas fa-plus"></i>
+                    Novo Lead
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters">
+                <input type="text" class="search-input" placeholder="Buscar leads...">
+                <select class="filter-select">
+                    <option value="">Todos os Status</option>
+                    <option value="novo">Novo</option>
+                    <option value="contato">Primeiro Contato</option>
+                    <option value="qualificado">Qualificado</option>
+                    <option value="proposta">Proposta</option>
+                    <option value="negociacao">Negociação</option>
+                    <option value="ganho">Ganho</option>
+                    <option value="perdido">Perdido</option>
+                </select>
+                <select class="filter-select">
+                    <option value="">Todos os Responsáveis</option>
+                    <option value="maria santos">Maria Santos</option>
+                    <option value="carlos oliveira">Carlos Oliveira</option>
+                    <option value="ana silva">Ana Silva</option>
+                </select>
+            </div>
+
+            <!-- Leads Table -->
+            <div class="table-container">
+                <table class="leads-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Empresa</th>
+                            <th>Email</th>
+                            <th>Telefone</th>
+                            <th>Status</th>
+                            <th>Responsável</th>
+                            <th>Último Contato</th>
+                            <th>Score</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTableBody">
+                        <!-- Dynamic content loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Kanban Tab -->
+        <div id="kanban" class="tab-content">
+            <div class="section-header">
+                <h1>Pipeline de Vendas</h1>
+                <button class="btn btn-primary" onclick="openLeadModal()">
+                    <i class="fas fa-plus"></i>
+                    Novo Lead
+                </button>
+            </div>
+
+            <!-- Kanban Board -->
+            <div class="kanban-board">
+                <!-- Novo -->
+                <div class="kanban-column">
+                    <div class="column-header">
+                        <h3>Novo</h3>
+                        <span class="lead-count">0</span>
+                    </div>
+                    <div class="column-actions">
+                        <button class="btn btn-sm btn-primary" onclick="openNewCardModal('novo')">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                    <div class="column-cards" id="novo-cards">
+                        <!-- Dynamic content loaded here -->
+                    </div>
+                </div>
+
+                <!-- Primeiro Contato -->
+                <div class="kanban-column">
+                    <div class="column-header">
+                        <h3>Primeiro Contato</h3>
+                        <span class="lead-count">0</span>
+                    </div>
+                    <div class="column-actions">
+                        <button class="btn btn-sm btn-primary" onclick="openNewCardModal('contato')">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                    <div class="column-cards" id="contato-cards">
+                        <!-- Dynamic content loaded here -->
+                    </div>
+                </div>
+
+                <!-- Qualificado -->
+                <div class="kanban-column">
+                    <div class="column-header">
+                        <h3>Qualificado</h3>
+                        <span class="lead-count">0</span>
+                    </div>
+                    <div class="column-actions">
+                        <button class="btn btn-sm btn-primary" onclick="openNewCardModal('qualificado')">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                    <div class="column-cards" id="qualificado-cards">
+                        <!-- Dynamic content loaded here -->
+                    </div>
+                </div>
+
+                <!-- Proposta -->
+                <div class="kanban-column">
+                    <div class="column-header">
+                        <h3>Proposta</h3>
+                        <span class="lead-count">0</span>
+                    </div>
+                    <div class="column-actions">
+                        <button class="btn btn-sm btn-primary" onclick="openNewCardModal('proposta')">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                    <div class="column-cards" id="proposta-cards">
+                        <!-- Dynamic content loaded here -->
+                    </div>
+                </div>
+
+                <!-- Negociação -->
+                <div class="kanban-column">
+                    <div class="column-header">
+                        <h3>Negociação</h3>
+                        <span class="lead-count">0</span>
+                    </div>
+                    <div class="column-actions">
+                        <button class="btn btn-sm btn-primary" onclick="openNewCardModal('negociacao')">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                    <div class="column-cards" id="negociacao-cards">
+                        <!-- Dynamic content loaded here -->
+                    </div>
+                </div>
+
+                <!-- Ganho -->
+                <div class="kanban-column">
+                    <div class="column-header success">
+                        <h3>Ganho</h3>
+                        <span class="lead-count">0</span>
+                    </div>
+                    <div class="column-actions">
+                        <button class="btn btn-sm btn-success" onclick="openNewCardModal('ganho')">
+                            <i class="fas fa-plus"></i> Adicionar
+                        </button>
+                    </div>
+                    <div class="column-cards" id="ganho-cards">
+                        <!-- Dynamic content loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasks Tab -->
+        <div id="tasks" class="tab-content">
+            <div class="section-header">
+                <h1>Gerenciamento de Tarefas</h1>
+                <button class="btn btn-primary" onclick="openTaskModal()">
+                    <i class="fas fa-plus"></i>
+                    Nova Tarefa
+                </button>
+            </div>
+
+            <!-- Task Filters -->
+            <div class="task-filters-row">
+                <div class="task-filters">
+                    <button class="filter-btn active" data-filter="all">Todas</button>
+                    <button class="filter-btn" data-filter="pending">Pendentes</button>
+                    <button class="filter-btn" data-filter="completed">Concluídas</button>
+                    <button class="filter-btn" data-filter="overdue">Atrasadas</button>
+                </div>
+
+                <div class="sort-controls">
+                    <label for="taskSortBy">Ordenar por:</label>
+                    <select id="taskSortBy" class="filter-select" onchange="sortTasks()">
+                        <option value="order">Ordem personalizada</option>
+                        <option value="due_date">Data de vencimento</option>
+                        <option value="priority">Prioridade</option>
+                        <option value="progress">Progresso</option>
+                        <option value="title">Título</option>
+                    </select>
+                    <button class="btn btn-sm btn-secondary" onclick="toggleSortDirection()">
+                        <i id="sortIcon" class="fas fa-sort-amount-up"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced Filters -->
+            <div class="advanced-filters">
+                <div class="filters-row">
+                    <div class="filter-group">
+                        <label for="taskStartDate">Data Início:</label>
+                        <input type="date" id="taskStartDate" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="taskEndDate">Data Fim:</label>
+                        <input type="date" id="taskEndDate" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="taskAssigneeFilter">Responsável:</label>
+                        <select id="taskAssigneeFilter" class="filter-select">
+                            <option value="">Todos</option>
+                            <option value="Maria Santos">Maria Santos</option>
+                            <option value="Carlos Oliveira">Carlos Oliveira</option>
+                            <option value="Ana Silva">Ana Silva</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="taskPriorityFilter">Prioridade:</label>
+                        <select id="taskPriorityFilter" class="filter-select">
+                            <option value="">Todas</option>
+                            <option value="high">Alta</option>
+                            <option value="medium">Média</option>
+                            <option value="low">Baixa</option>
+                        </select>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-sm btn-primary" onclick="applyAdvancedFilters()">
+                            <i class="fas fa-filter"></i> Aplicar
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="clearAdvancedFilters()">
+                            <i class="fas fa-times"></i> Limpar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks List -->
+            <div class="tasks-list" id="tasksList">
+                <!-- Dynamic content loaded here -->
+            </div>
+        </div>
+
+        <!-- Calendar Tab -->
+        <div id="calendar" class="tab-content">
+            <div class="section-header">
+                <h1>Calendário de Atividades</h1>
+                <button class="btn btn-primary" onclick="openEventModal()">
+                    <i class="fas fa-plus"></i>
+                    Agendar Atividade
+                </button>
+            </div>
+
+            <div class="calendar-container">
+                <div class="calendar-sidebar">
+                    <h3>Modelos de Eventos</h3>
+                    <div class="predefined-events">
+                        <div class="event-template" data-event-type="novo" draggable="true">
+                            <div class="event-color novo"></div>
+                            <div class="event-info">
+                                <span class="event-title">Novo Lead - Contato Inicial</span>
+                                <span class="event-subtitle">Primeiro contato com novo lead</span>
+                            </div>
+                        </div>
+                        <div class="event-template" data-event-type="contato" draggable="true">
+                            <div class="event-color contato"></div>
+                            <div class="event-info">
+                                <span class="event-title">Primeiro Contato</span>
+                                <span class="event-subtitle">Ligação ou email inicial</span>
+                            </div>
+                        </div>
+                        <div class="event-template" data-event-type="qualificado" draggable="true">
+                            <div class="event-color qualificado"></div>
+                            <div class="event-info">
+                                <span class="event-title">Reunião de Qualificação</span>
+                                <span class="event-subtitle">Entender necessidades do lead</span>
+                            </div>
+                        </div>
+                        <div class="event-template" data-event-type="proposta" draggable="true">
+                            <div class="event-color proposta"></div>
+                            <div class="event-info">
+                                <span class="event-title">Apresentar Proposta</span>
+                                <span class="event-subtitle">Demonstração ou envio de proposta</span>
+                            </div>
+                        </div>
+                        <div class="event-template" data-event-type="negociacao" draggable="true">
+                            <div class="event-color negociacao"></div>
+                            <div class="event-info">
+                                <span class="event-title">Reunião de Negociação</span>
+                                <span class="event-subtitle">Discussão de termos e condições</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="recent-history">
+                        <h3>Histórico Recente</h3>
+                        <div class="history-list" id="recentHistoryList">
+                            <!-- Dynamic content loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="calendar-main">
+                    <div id="calendar-widget"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div id="reports" class="tab-content">
+            <div class="section-header">
+                <h1>Relatórios Customizáveis</h1>
+                <button class="btn btn-primary" onclick="generateCustomReport()">
+                    <i class="fas fa-chart-bar"></i>
+                    Gerar Relatório
+                </button>
+            </div>
+
+            <!-- Report Filters -->
+            <div class="report-filters">
+                <h3><i class="fas fa-filter"></i> Configurações do Relatório</h3>
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label for="reportType">Tipo de Relatório:</label>
+                        <select id="reportType" class="filter-select">
+                            <option value="sales_performance">Performance de Vendas</option>
+                            <option value="pipeline_time">Tempo no Pipeline</option>
+                            <option value="vendor_analysis">Análise por Vendedor</option>
+                            <option value="conversion_funnel">Funil de Conversão</option>
+                            <option value="lead_source">Origem de Leads</option>
+                            <option value="activity_summary">Resumo de Atividades</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="reportStartDate">Data Inicial:</label>
+                        <input type="date" id="reportStartDate" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="reportEndDate">Data Final:</label>
+                        <input type="date" id="reportEndDate" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label for="reportVendedor">Vendedor:</label>
+                        <select id="reportVendedor" class="filter-select">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn btn-primary" onclick="generateCustomReport()">
+                        <i class="fas fa-chart-line"></i> Gerar Relatório
+                    </button>
+                </div>
+            </div>
+
+            <!-- Report Results -->
+            <div id="reportResults" class="report-results" style="display: none;">
+                <div id="reportContent">
+                    <!-- Report content will be generated here -->
+                </div>
+            </div>
+
+            <!-- Export Actions -->
+            <div id="exportActions" class="export-actions" style="display: none;">
+                <h3><i class="fas fa-download"></i> Exportar Relatório</h3>
+                <div class="export-buttons">
+                    <button class="btn btn-danger" onclick="exportToPDF()">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                    <button class="btn btn-success" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button class="btn btn-secondary" onclick="printReport()">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+
+            <!-- Predefined Reports -->
+            <div class="predefined-reports">
+                <h3><i class="fas fa-chart-pie"></i> Relatórios Rápidos</h3>
+                <div class="reports-grid">
+                    <div class="report-card" onclick="document.getElementById('reportType').value='sales_performance'; generateCustomReport();">
+                        <div class="report-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <h4>Performance de Vendas</h4>
+                        <p>Análise completa das vendas por período, vendedor e conversões</p>
+                    </div>
+                    <div class="report-card" onclick="document.getElementById('reportType').value='pipeline_time'; generateCustomReport();">
+                        <div class="report-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h4>Tempo no Pipeline</h4>
+                        <p>Tempo médio de permanência em cada estágio do funil</p>
+                    </div>
+                    <div class="report-card" onclick="document.getElementById('reportType').value='vendor_analysis'; generateCustomReport();">
+                        <div class="report-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h4>Análise por Vendedor</h4>
+                        <p>Performance individual e comparativa entre vendedores</p>
+                    </div>
+                    <div class="report-card" onclick="document.getElementById('reportType').value='conversion_funnel'; generateCustomReport();">
+                        <div class="report-icon">
+                            <i class="fas fa-funnel-dollar"></i>
+                        </div>
+                        <h4>Funil de Conversão</h4>
+                        <p>Taxa de conversão e pontos de maior drop-off</p>
+                    </div>
+                    <div class="report-card" onclick="document.getElementById('reportType').value='lead_source'; generateCustomReport();">
+                        <div class="report-icon">
+                            <i class="fas fa-share-alt"></i>
+                        </div>
+                        <h4>Origem de Leads</h4>
+                        <p>Análise de ROI por canal de aquisição</p>
+                    </div>
+                    <div class="report-card" onclick="document.getElementById('reportType').value='activity_summary'; generateCustomReport();">
+                        <div class="report-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h4>Resumo de Atividades</h4>
+                        <p>Volume e tipos de atividades realizadas</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Classic Reports -->
+            <div class="classic-reports">
+                <h3><i class="fas fa-chart-bar"></i> Relatórios Clássicos</h3>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Funil de Vendas</h3>
+                        <div id="reportFunnelChart"></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Origem dos Leads</h3>
+                        <div id="reportSourceChart"></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Vendas por Período</h3>
+                        <div id="reportSalesChart"></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Taxa de Conversão por Vendedor</h3>
+                        <div id="reportConversionChart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Files Tab -->
+        <div id="files" class="tab-content">
+            <div class="section-header">
+                <h1>Gerenciamento de Arquivos</h1>
+                <button class="btn btn-primary" onclick="openFileUploadModal()">
+                    <i class="fas fa-upload"></i>
+                    Fazer Upload
+                </button>
+            </div>
+
+            <!-- Files Filters -->
+            <div class="files-filters">
+                <input type="text" id="filesSearch" class="search-input" placeholder="Buscar arquivos..." onkeyup="filterFiles()">
+                <select id="fileTypeFilter" class="filter-select" onchange="filterFiles()">
+                    <option value="">Todos os Tipos</option>
+                    <option value="document">Documentos</option>
+                    <option value="image">Imagens</option>
+                    <option value="archive">Arquivos</option>
+                    <option value="other">Outros</option>
+                </select>
+                <select id="taskFilter" class="filter-select" onchange="filterFiles()">
+                    <!-- Populated dynamically -->
+                </select>
+                <button class="btn btn-secondary" onclick="filterFiles()">
+                    <i class="fas fa-filter"></i>
+                    Filtrar
+                </button>
+            </div>
+
+            <!-- Files Container -->
+            <div class="files-container">
+                <div id="filesGrid" class="files-grid">
+                    <!-- Dynamic content loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div id="logs" class="tab-content">
+            <div class="section-header">
+                <h1>Logs do Sistema</h1>
+            </div>
+
+            <!-- Logs Filters -->
+            <div class="logs-filters">
+                <input type="date" class="date-input" placeholder="Data início">
+                <input type="date" class="date-input" placeholder="Data fim">
+                <select class="filter-select">
+                    <option value="">Todos os tipos</option>
+                    <option value="lead">Lead</option>
+                    <option value="email">Email</option>
+                    <option value="call">Ligação</option>
+                    <option value="task">Tarefa</option>
+                    <option value="meeting">Reunião</option>
+                    <option value="note">Nota</option>
+                </select>
+                <button class="btn btn-primary" onclick="applyLogsFilters()">
+                    <i class="fas fa-filter"></i>
+                    Filtrar
+                </button>
+            </div>
+
+            <!-- Logs Timeline -->
+            <div class="logs-timeline" id="logsTimeline">
+                <!-- Dynamic content loaded here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Lead Modal -->
+    <div id="leadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="leadModalTitle">Novo Lead</h2>
+                <span class="close" onclick="closeModal('leadModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="leadForm">
+                    <input type="hidden" id="leadId" name="id">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="leadName">Nome *</label>
+                            <input type="text" id="leadName" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="leadCompany">Empresa *</label>
+                            <input type="text" id="leadCompany" name="company" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="leadEmail">Email *</label>
+                            <input type="email" id="leadEmail" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="leadPhone">Telefone *</label>
+                            <input type="tel" id="leadPhone" name="phone" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="leadPosition">Cargo</label>
+                            <input type="text" id="leadPosition" name="position">
+                        </div>
+                        <div class="form-group">
+                            <label for="leadSource">Origem</label>
+                            <select id="leadSource" name="source">
+                                <option value="website">Website</option>
+                                <option value="referral">Indicação</option>
+                                <option value="social">Redes Sociais</option>
+                                <option value="event">Evento</option>
+                                <option value="cold_call">Cold Call</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="leadStatus">Status</label>
+                            <select id="leadStatus" name="status">
+                                <option value="novo">Novo</option>
+                                <option value="contato">Primeiro Contato</option>
+                                <option value="qualificado">Qualificado</option>
+                                <option value="proposta">Proposta</option>
+                                <option value="negociacao">Negociação</option>
+                                <option value="ganho">Ganho</option>
+                                <option value="perdido">Perdido</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="leadValue">Valor Estimado (R$)</label>
+                            <input type="number" id="leadValue" name="value" min="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="leadNotes">Observações</label>
+                        <textarea id="leadNotes" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('leadModal')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitLead()">
+                    <i class="fas fa-save"></i>
+                    Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Modal -->
+    <div id="activityModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agendar Atividade</h2>
+                <span class="close" onclick="closeModal('activityModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="activityForm">
+                    <div class="form-group">
+                        <label for="activityLeadId">Lead Relacionado</label>
+                        <select id="activityLeadId" name="leadId">
+                            <option value="">Selecione um lead (opcional)</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="activityType">Tipo de Atividade *</label>
+                            <select id="activityType" name="type" required>
+                                <option value="call">Ligação</option>
+                                <option value="email">Email</option>
+                                <option value="meeting">Reunião</option>
+                                <option value="demo">Demonstração</option>
+                                <option value="follow-up">Follow-up</option>
+                                <option value="task">Tarefa</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="activityDateTime">Data e Hora *</label>
+                            <input type="datetime-local" id="activityDateTime" name="datetime" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="activityTitle">Título *</label>
+                        <input type="text" id="activityTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="activityDescription">Descrição</label>
+                        <textarea id="activityDescription" name="description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('activityModal')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitActivity()">
+                    <i class="fas fa-plus"></i>
+                    Agendar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="taskModalTitle">Nova Tarefa</h2>
+                <span class="close" onclick="closeModal('taskModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="taskForm">
+                    <input type="hidden" id="taskId" name="id">
+                    <div class="form-group">
+                        <label for="taskTitle">Título *</label>
+                        <input type="text" id="taskTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDescription">Descrição</label>
+                        <textarea id="taskDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskDueDate">Data de Vencimento *</label>
+                            <input type="date" id="taskDueDate" name="dueDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskPriority">Prioridade</label>
+                            <select id="taskPriority" name="priority">
+                                <option value="low">Baixa</option>
+                                <option value="medium" selected>Média</option>
+                                <option value="high">Alta</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskLeadId">Lead Relacionado</label>
+                            <select id="taskLeadId" name="leadId">
+                                <option value="">Selecione um lead</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskAssignee">Responsável</label>
+                            <select id="taskAssignee" name="assignee">
+                                <option value="Maria Santos">Maria Santos</option>
+                                <option value="Carlos Oliveira">Carlos Oliveira</option>
+                                <option value="Ana Silva">Ana Silva</option>
+                                <option value="Pedro Costa">Pedro Costa</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskProgress">Progresso (%): <span id="progressDisplay">0</span>%</label>
+                        <input type="range" id="taskProgress" name="progress" min="0" max="100" value="0" onchange="updateProgressDisplay(this.value)">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('taskModal')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitTask()">
+                    <i class="fas fa-save"></i>
+                    Salvar Tarefa
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Note Modal -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Adicionar Nota</h2>
+                <span class="close" onclick="closeModal('noteModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="noteForm">
+                    <input type="hidden" id="noteLeadId" name="leadId">
+                    <div class="form-group">
+                        <label for="note">Nota</label>
+                        <textarea id="note" name="note" rows="5" required placeholder="Digite sua nota aqui..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('noteModal')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitNote()">
+                    <i class="fas fa-save"></i>
+                    Salvar Nota
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Card Modal -->
+    <div id="newCardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Novo Lead - Kanban</h2>
+                <span class="close" onclick="closeModal('newCardModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="newCardForm">
+                    <input type="hidden" id="newCardStatus" name="status">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="newCardName">Nome *</label>
+                            <input type="text" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newCardCompany">Empresa *</label>
+                            <input type="text" name="company" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="newCardEmail">Email *</label>
+                            <input type="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newCardPhone">Telefone</label>
+                            <input type="tel" name="phone">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="newCardPosition">Cargo</label>
+                            <input type="text" name="position">
+                        </div>
+                        <div class="form-group">
+                            <label for="newCardSource">Origem</label>
+                            <select name="source">
+                                <option value="website">Website</option>
+                                <option value="referral">Indicação</option>
+                                <option value="social">Redes Sociais</option>
+                                <option value="event">Evento</option>
+                                <option value="cold_call">Cold Call</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="newCardTemperature">Temperatura</label>
+                            <select name="temperature">
+                                <option value="frio">Frio</option>
+                                <option value="morno" selected>Morno</option>
+                                <option value="quente">Quente</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="newCardValue">Valor Estimado (R$)</label>
+                            <input type="number" name="value" min="0" step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="newCardNotes">Observações</label>
+                        <textarea name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('newCardModal')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="submitNewCard()">
+                    <i class="fas fa-save"></i>
+                    Criar Lead
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div id="taskDetailsModal" class="modal large-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="taskDetailsTitle">Detalhes da Tarefa</h2>
+                <span class="close" onclick="closeModal('taskDetailsModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="task-details-container">
+                    <!-- Progress Section -->
+                    <div class="task-section">
+                        <h3>Progresso</h3>
+                        <div class="progress-controls">
+                            <input type="range" id="taskProgressSlider" min="0" max="100" value="0" onchange="updateTaskProgress(this.value)">
+                            <span id="taskProgressText">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="taskProgressBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Attachments Section -->
+                    <div class="task-section">
+                        <h3>Anexos</h3>
+                        <div class="attachment-upload">
+                            <input type="file" id="attachmentFile" multiple onchange="handleFileUpload()">
+                            <button class="btn btn-sm btn-primary" onclick="document.getElementById('attachmentFile').click()">
+                                <i class="fas fa-paperclip"></i> Adicionar Anexo
+                            </button>
+                        </div>
+                        <div id="taskAttachmentsList" class="attachments-list">
+                            <!-- Dynamic content -->
+                        </div>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div class="task-section">
+                        <h3>Comentários</h3>
+                        <div class="comment-form">
+                            <textarea id="newComment" placeholder="Adicionar comentário..." rows="3"></textarea>
+                            <button class="btn btn-sm btn-primary" onclick="addTaskComment()">
+                                <i class="fas fa-comment"></i> Adicionar Comentário
+                            </button>
+                        </div>
+                        <div id="taskCommentsList" class="comments-list">
+                            <!-- Dynamic content -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deleteTaskWithConfirmation()">
+                    <i class="fas fa-trash"></i>
+                    Excluir Tarefa
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('taskDetailsModal')">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Container -->
+    <div id="notifications" class="notifications-container"></div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+</body>
+</html>
