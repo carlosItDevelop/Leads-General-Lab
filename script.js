@@ -3149,6 +3149,12 @@ async function handleFileUpload() {
     // Limpar input e recarregar anexos
     fileInput.value = '';
     await loadTaskAttachments(currentTaskId);
+    
+    // Recarregar grid de arquivos se estivermos na aba Files
+    const currentTab = document.querySelector('.tab-content.active');
+    if (currentTab && currentTab.id === 'files') {
+        renderFilesGrid();
+    }
 }
 
 // Função para abrir modal de upload de arquivos (para a aba Files)
@@ -3181,13 +3187,80 @@ function openFileUploadModal() {
 }
 
 // Função para filtrar arquivos na aba Files
-function filterFiles() {
+async function filterFiles() {
     const searchTerm = document.getElementById('filesSearch')?.value.toLowerCase() || '';
     const typeFilter = document.getElementById('fileTypeFilter')?.value || '';
     const taskFilter = document.getElementById('taskFilter')?.value || '';
     
-    console.log('Filtrando arquivos:', { searchTerm, typeFilter, taskFilter });
-    showNotification('Filtros aplicados (função de demonstração)', 'info');
+    try {
+        const attachments = await fetchFromAPI('/attachments');
+        
+        let filteredFiles = attachments.filter(file => {
+            // Filtro de busca por nome
+            const matchesSearch = !searchTerm || file.filename.toLowerCase().includes(searchTerm);
+            
+            // Filtro por tipo
+            const fileType = getFileTypeFromMime(file.mime_type);
+            const matchesType = !typeFilter || fileType === typeFilter;
+            
+            // Filtro por tarefa
+            const matchesTask = !taskFilter || file.task_id == taskFilter;
+            
+            return matchesSearch && matchesType && matchesTask;
+        });
+
+        const filesGrid = document.getElementById('filesGrid');
+        if (!filesGrid) return;
+
+        if (filteredFiles.length === 0) {
+            filesGrid.innerHTML = `
+                <div class="files-empty">
+                    <i class="fas fa-search"></i>
+                    <h3>Nenhum arquivo encontrado</h3>
+                    <p>Nenhum arquivo corresponde aos filtros selecionados.</p>
+                </div>
+            `;
+            return;
+        }
+
+        filesGrid.innerHTML = filteredFiles.map(file => {
+            const fileType = getFileTypeFromMime(file.mime_type);
+            const formattedSize = formatFileSize(file.file_size);
+            const uploadDate = formatDate(file.created_at);
+
+            return `
+                <div class="file-item">
+                    <div class="file-icon">
+                        <i class="fas fa-${getFileIcon(fileType)}"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${file.filename}</div>
+                        <div class="file-meta">
+                            <span class="file-size">${formattedSize}</span>
+                            ${file.task_title ? `<span class="file-task">• ${file.task_title}</span>` : ''}
+                            <span class="file-date">• ${uploadDate}</span>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn-icon" onclick="downloadAttachment('${file.file_url}')" title="Download">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="btn-icon" onclick="deleteFileFromGrid(${file.id})" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        if (searchTerm || typeFilter || taskFilter) {
+            showNotification(`${filteredFiles.length} arquivo(s) encontrado(s)`, 'info');
+        }
+
+    } catch (error) {
+        console.error('Erro ao filtrar arquivos:', error);
+        showNotification('Erro ao aplicar filtros', 'error');
+    }
 }
 
 // Função para popular dropdown de tarefas na aba Files
@@ -3205,64 +3278,69 @@ function populateTasksFilter() {
 }
 
 // Função para renderizar grid de arquivos
-function renderFilesGrid() {
+async function renderFilesGrid() {
     const filesGrid = document.getElementById('filesGrid');
     if (!filesGrid) return;
 
     // Popular dropdown de tarefas quando renderizar os arquivos
     populateTasksFilter();
 
-    // Simulação de arquivos para demonstração
-    const sampleFiles = [
-        {
-            id: 1,
-            name: 'proposta-tech-corp.pdf',
-            type: 'document',
-            size: '2.5 MB',
-            task: 'Preparar demonstração',
-            uploaded: '2024-01-15'
-        },
-        {
-            id: 2,
-            name: 'logo-empresa.png',
-            type: 'image',
-            size: '150 KB',
-            task: 'Follow-up com João Silva',
-            uploaded: '2024-01-14'
-        },
-        {
-            id: 3,
-            name: 'contrato-exemplo.docx',
-            type: 'document',
-            size: '1.2 MB',
-            task: null,
-            uploaded: '2024-01-13'
-        }
-    ];
-
-    filesGrid.innerHTML = sampleFiles.map(file => `
-        <div class="file-item">
-            <div class="file-icon">
-                <i class="fas fa-${getFileIcon(file.type)}"></i>
-            </div>
-            <div class="file-info">
-                <div class="file-name">${file.name}</div>
-                <div class="file-meta">
-                    <span class="file-size">${file.size}</span>
-                    ${file.task ? `<span class="file-task">• ${file.task}</span>` : ''}
-                    <span class="file-date">• ${file.uploaded}</span>
+    try {
+        // Buscar arquivos reais do banco de dados
+        const attachments = await fetchFromAPI('/attachments');
+        
+        if (attachments.length === 0) {
+            filesGrid.innerHTML = `
+                <div class="files-empty">
+                    <i class="fas fa-folder-open"></i>
+                    <h3>Nenhum arquivo encontrado</h3>
+                    <p>Faça upload de arquivos através das tarefas para vê-los aqui.</p>
                 </div>
+            `;
+            return;
+        }
+
+        filesGrid.innerHTML = attachments.map(file => {
+            const fileType = getFileTypeFromMime(file.mime_type);
+            const formattedSize = formatFileSize(file.file_size);
+            const uploadDate = formatDate(file.created_at);
+
+            return `
+                <div class="file-item">
+                    <div class="file-icon">
+                        <i class="fas fa-${getFileIcon(fileType)}"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${file.filename}</div>
+                        <div class="file-meta">
+                            <span class="file-size">${formattedSize}</span>
+                            ${file.task_title ? `<span class="file-task">• ${file.task_title}</span>` : ''}
+                            <span class="file-date">• ${uploadDate}</span>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn-icon" onclick="downloadAttachment('${file.file_url}')" title="Download">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="btn-icon" onclick="deleteFileFromGrid(${file.id})" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Erro ao carregar arquivos:', error);
+        filesGrid.innerHTML = `
+            <div class="files-empty">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Erro ao carregar arquivos</h3>
+                <p>Não foi possível carregar a lista de arquivos.</p>
             </div>
-            <div class="file-actions">
-                <button class="btn-icon" onclick="downloadFile('${file.name}')" title="Download">
-                    <i class="fas fa-download"></i>
-                </button>
-                <button class="btn-icon" onclick="deleteFile(${file.id})" title="Excluir">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+        showNotification('Erro ao carregar arquivos', 'error');
+    }
 }
 
 function getFileIcon(type) {
@@ -3270,18 +3348,69 @@ function getFileIcon(type) {
         document: 'file-alt',
         image: 'image',
         archive: 'file-archive',
+        video: 'file-video',
+        audio: 'file-audio',
+        pdf: 'file-pdf',
+        excel: 'file-excel',
+        word: 'file-word',
+        powerpoint: 'file-powerpoint',
         other: 'file'
     };
     return icons[type] || 'file';
+}
+
+function getFileTypeFromMime(mimeType) {
+    if (!mimeType) return 'other';
+    
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    if (mimeType === 'application/pdf') return 'pdf';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'excel';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'word';
+    if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'powerpoint';
+    if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('archive')) return 'archive';
+    if (mimeType.startsWith('text/') || mimeType.includes('document')) return 'document';
+    
+    return 'other';
 }
 
 function downloadFile(filename) {
     showNotification(`Download de "${filename}" iniciado (simulação)`, 'info');
 }
 
+async function deleteFileFromGrid(fileId) {
+    const result = await Swal.fire({
+        title: 'Confirmar Exclusão',
+        text: 'Tem certeza que deseja excluir este arquivo?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sim, excluir!',
+        cancelButtonText: 'Cancelar',
+        background: currentTheme === 'dark' ? '#1e293b' : '#ffffff',
+        color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await fetchFromAPI(`/attachments/${fileId}`, {
+                method: 'DELETE'
+            });
+            
+            showNotification('Arquivo excluído com sucesso!', 'success');
+            renderFilesGrid(); // Recarregar grid de arquivos
+        } catch (error) {
+            console.error('Erro ao excluir arquivo:', error);
+            showNotification('Erro ao excluir arquivo', 'error');
+        }
+    }
+}
+
 function deleteFile(fileId) {
-    showNotification(`Arquivo ID ${fileId} removido (simulação)`, 'success');
-    renderFilesGrid();
+    // Manter compatibilidade com código antigo
+    deleteFileFromGrid(fileId);
 }
 
 async function deleteTaskWithConfirmation(taskId = null) {
