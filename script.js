@@ -861,8 +861,7 @@ async function toggleTaskStatus(taskId) {
 
             // Recarregar dados
             await loadSampleData();
-            showNotification('Status da tarefa atualizado!',```javascript
- 'success');
+            showNotification('Status da tarefa atualizado!', 'success');
         } catch (error) {
             console.error('Erro ao atualizar tarefa:', error);
             showNotification('Erro ao atualizar tarefa', 'error');
@@ -1821,8 +1820,7 @@ function openTaskModal() {
         leadSelect.appendChild(option);
     });
 
-    // Set default assignee
-    ```javascript
+    // Set default assignee```javascript
 document.getElementById('taskAssignee').value = 'Maria';
 
     document.getElementById('taskModal').style.display = 'block';
