@@ -868,8 +868,8 @@ function getTemplateColor(eventType) {
         'qualificado': '#10b981',
         'proposta': '#8b5cf6',
         'negociacao': '#ef4444'
-    };    ```python
-return colors[eventType] || '#3b82f6';
+    };
+    return colors[eventType] || '#3b82f6';
 }
 
 async function initializeCalendar() {
