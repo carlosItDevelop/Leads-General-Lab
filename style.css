@@ -1135,6 +1135,8 @@ body {
   transition: color 0.2s ease;
 }
 
+The code defines CSS variables for theming, including colors, backgrounds, and text styles.```text
+
 .task-item:hover .task-title {
   color: var(--primary-color);
 }
