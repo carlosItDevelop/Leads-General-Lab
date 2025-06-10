@@ -3406,7 +3406,7 @@ function renderActivitySummaryContent() {
 function renderReportChartsContainer() {
     return `
         <div class="report-chart-container">
-            <canvas id="reportChart" width="800" height="400"></canvas>
+            <div id="reportChart" style="width: 100%; height: 400px;"></div>
         </div>
     `;
 }
@@ -3539,18 +3539,447 @@ function renderPipelineTimeTable() {
 
 // Atualizar gráficos do relatório
 function updateReportCharts() {
-    // Esta função seria implementada com Chart.js ou similar
-    // Por enquanto, vamos simular
-    const canvas = document.getElementById('reportChart');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = 'var(--primary-color)';
-        ctx.fillRect(50, 50, 100, 100);
-        ctx.fillStyle = 'var(--text-primary)';
-        ctx.font = '16px Arial';
-        ctx.fillText('Gráfico do Relatório', 200, 100);
-        ctx.fillText(`Tipo: ${reportData.title}`, 200, 120);
+    const chartContainer = document.getElementById('reportChart');
+    if (!chartContainer || !reportData) return;
+
+    // Limpar gráfico anterior se existir
+    chartContainer.innerHTML = '';
+
+    let chartOptions = {};
+
+    switch(currentReportType) {
+        case 'sales_performance':
+            chartOptions = createSalesPerformanceChart();
+            break;
+        case 'pipeline_time':
+            chartOptions = createPipelineTimeChart();
+            break;
+        case 'vendor_analysis':
+            chartOptions = createVendorAnalysisChart();
+            break;
+        case 'conversion_funnel':
+            chartOptions = createConversionFunnelChart();
+            break;
+        case 'lead_source':
+            chartOptions = createLeadSourceChart();
+            break;
+        case 'activity_summary':
+            chartOptions = createActivitySummaryChart();
+            break;
+        default:
+            chartOptions = createDefaultChart();
     }
+
+    // Criar gráfico com ApexCharts
+    const chart = new ApexCharts(chartContainer, chartOptions);
+    chart.render();
+}
+
+// Criar gráfico de performance de vendas
+function createSalesPerformanceChart() {
+    const vendors = Object.keys(reportData.data);
+    const revenues = vendors.map(v => reportData.data[v].totalRevenue);
+    const conversions = vendors.map(v => parseFloat(reportData.data[v].conversionRate));
+
+    return {
+        series: [{
+            name: 'Receita (R$)',
+            type: 'column',
+            data: revenues
+        }, {
+            name: 'Taxa de Conversão (%)',
+            type: 'line',
+            data: conversions
+        }],
+        chart: {
+            height: 350,
+            type: 'line',
+            background: 'transparent',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        stroke: {
+            width: [0, 4]
+        },
+        title: {
+            text: 'Performance de Vendas por Vendedor',
+            style: {
+                color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+            }
+        },
+        dataLabels: {
+            enabled: true,
+            enabledOnSeries: [1]
+        },
+        labels: vendors,
+        xaxis: {
+            type: 'category',
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        yaxis: [{
+            title: {
+                text: 'Receita (R$)',
+                style: {
+                    color: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            },
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        }, {
+            opposite: true,
+            title: {
+                text: 'Taxa de Conversão (%)',
+                style: {
+                    color: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            },
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        }],
+        colors: ['#3b82f6', '#10b981'],
+        theme: {
+            mode: currentTheme
+        }
+    };
+}
+
+// Criar gráfico de tempo no pipeline
+function createPipelineTimeChart() {
+    const stages = Object.keys(reportData.data);
+    const averageDays = stages.map(s => reportData.data[s].averageDays);
+    const counts = stages.map(s => reportData.data[s].count);
+
+    return {
+        series: [{
+            name: 'Tempo Médio (dias)',
+            data: averageDays
+        }],
+        chart: {
+            height: 350,
+            type: 'bar',
+            background: 'transparent',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                horizontal: false,
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        title: {
+            text: 'Tempo Médio por Estágio do Pipeline',
+            style: {
+                color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+            }
+        },
+        xaxis: {
+            categories: stages.map(s => getStatusLabel(s)),
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        yaxis: {
+            title: {
+                text: 'Dias',
+                style: {
+                    color: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            },
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        colors: ['#6366f1'],
+        theme: {
+            mode: currentTheme
+        }
+    };
+}
+
+// Criar gráfico de análise por vendedor
+function createVendorAnalysisChart() {
+    const vendors = Object.keys(reportData.data);
+    const totalLeads = vendors.map(v => reportData.data[v].leads.total);
+    const convertedLeads = vendors.map(v => reportData.data[v].leads.converted);
+    const revenues = vendors.map(v => reportData.data[v].revenue);
+
+    return {
+        series: [{
+            name: 'Total de Leads',
+            data: totalLeads
+        }, {
+            name: 'Leads Convertidos',
+            data: convertedLeads
+        }],
+        chart: {
+            height: 350,
+            type: 'bar',
+            background: 'transparent',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        plotOptions: {
+            bar: {
+                horizontal: false,
+                columnWidth: '55%',
+                endingShape: 'rounded'
+            },
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            show: true,
+            width: 2,
+            colors: ['transparent']
+        },
+        title: {
+            text: 'Análise Comparativa por Vendedor',
+            style: {
+                color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+            }
+        },
+        xaxis: {
+            categories: vendors,
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        yaxis: {
+            title: {
+                text: 'Quantidade de Leads',
+                style: {
+                    color: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            },
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        fill: {
+            opacity: 1
+        },
+        colors: ['#3b82f6', '#10b981'],
+        theme: {
+            mode: currentTheme
+        }
+    };
+}
+
+// Criar gráfico de funil de conversão
+function createConversionFunnelChart() {
+    const stages = Object.keys(reportData.data);
+    const counts = stages.map(s => reportData.data[s].count);
+
+    return {
+        series: [{
+            name: 'Quantidade de Leads',
+            data: counts
+        }],
+        chart: {
+            height: 350,
+            type: 'bar',
+            background: 'transparent',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                horizontal: true,
+            }
+        },
+        dataLabels: {
+            enabled: true
+        },
+        title: {
+            text: 'Funil de Conversão - Leads por Estágio',
+            style: {
+                color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+            }
+        },
+        xaxis: {
+            categories: stages.map(s => getStatusLabel(s)),
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        colors: ['#6366f1', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4'],
+        theme: {
+            mode: currentTheme
+        }
+    };
+}
+
+// Criar gráfico de origem de leads
+function createLeadSourceChart() {
+    const sources = Object.keys(reportData.data);
+    const totals = sources.map(s => reportData.data[s].total);
+
+    return {
+        series: totals,
+        chart: {
+            height: 350,
+            type: 'donut',
+            background: 'transparent',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        title: {
+            text: 'Distribuição de Leads por Origem',
+            style: {
+                color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+            }
+        },
+        labels: sources.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+        dataLabels: {
+            enabled: true,
+            style: {
+                colors: [currentTheme === 'dark' ? '#f1f5f9' : '#1e293b']
+            }
+        },
+        legend: {
+            position: 'bottom',
+            labels: {
+                colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+            }
+        },
+        colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'],
+        theme: {
+            mode: currentTheme
+        }
+    };
+}
+
+// Criar gráfico de resumo de atividades
+function createActivitySummaryChart() {
+    const data = reportData.data;
+    const activityTypes = Object.keys(data.activities.byType);
+    const activityCounts = activityTypes.map(t => data.activities.byType[t]);
+
+    return {
+        series: [{
+            name: 'Quantidade',
+            data: activityCounts
+        }],
+        chart: {
+            height: 350,
+            type: 'bar',
+            background: 'transparent',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                horizontal: false,
+                distributed: true
+            }
+        },
+        dataLabels: {
+            enabled: true
+        },
+        title: {
+            text: 'Resumo de Atividades por Tipo',
+            style: {
+                color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+            }
+        },
+        xaxis: {
+            categories: activityTypes.map(t => t.charAt(0).toUpperCase() + t.slice(1)),
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        yaxis: {
+            title: {
+                text: 'Quantidade',
+                style: {
+                    color: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            },
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'],
+        theme: {
+            mode: currentTheme
+        },
+        legend: {
+            show: false
+        }
+    };
+}
+
+// Criar gráfico padrão quando não há dados
+function createDefaultChart() {
+    return {
+        series: [{
+            name: 'Sem dados',
+            data: [0]
+        }],
+        chart: {
+            height: 350,
+            type: 'bar',
+            background: 'transparent',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        title: {
+            text: 'Nenhum dado disponível para exibir',
+            style: {
+                color: currentTheme === 'dark' ? '#f1f5f9' : '#1e293b'
+            }
+        },
+        xaxis: {
+            categories: ['Sem dados'],
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        yaxis: {
+            labels: {
+                style: {
+                    colors: currentTheme === 'dark' ? '#cbd5e1' : '#64748b'
+                }
+            }
+        },
+        colors: ['#94a3b8'],
+        theme: {
+            mode: currentTheme
+        }
+    };
 }
 
 // Exportar relatório para PDF
